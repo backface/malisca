@@ -1,0 +1,8 @@
+#!/usr/bin/expect
+spawn telnet 192.168.0.9
+expect {*login:}
+send "root\r"
+expect {*Password:}
+send "pass\r"
+sleep 1
+send "reboot\r"
