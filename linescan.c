@@ -1,6 +1,6 @@
 /* 
  
- linescan-gl2.c
+ MALISCA linescanner
  realtime preview with buffer downscaled to 512x512
  
 */
@@ -74,6 +74,7 @@ char *output_file;
 char *watch_dir;
 char *watch_src_cmd;
 char *output_dir = "scan-data";
+
 char *gst_pipeline, *gst_input_pipeline;
 char str_info[255];
 char str_gps[255];
@@ -205,9 +206,6 @@ void read_config(void) {
 			break;
 		}
 	}
-
-	if (!output_file) 
-		flag_write_movie = 0;
 		
 	if (!gst_pipeline) 
 		gst_pipeline = "videotestsrc ! ffmpegcolorspace";
@@ -1143,6 +1141,19 @@ gint main (gint argc, gchar *argv[]) {
 	
 	read_config();
 	read_options(argc, argv);
+
+	printf("%s\n",output_file);
+
+	if(output_file == NULL) {
+		time_t now;
+		struct tm *curtime;
+		now = time(NULL);
+		curtime = gmtime(&now);
+		char buf[255];
+		strftime(buf, sizeof(buf), "%Y%d%m-%H%M%S.avi", curtime);
+		printf("%s",buf);
+		output_file = buf;
+	}
 	
 	/* init GStreamer */
 	gst_init (&argc, &argv);
