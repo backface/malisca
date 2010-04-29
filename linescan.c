@@ -1,7 +1,7 @@
 /* 
- 
  MALISCA linescanner
- realtime preview with buffer downscaled to 512x512
+ with realtime preview 
+ Michael Aschauer <m@ash.to>
  
 */
 
@@ -286,7 +286,7 @@ void read_options(int argc, char *argv[]) {
 				printf(" -g | --gps                   log GPS data \n");				
 				printf("      --verbose               be verbose \n");
 				printf("      --nodisplay             run without preview\n");
-				printf("      --downscale             downscale image for preview (Faster!)\n");
+				printf("      --no-downscale             downscale image for preview (Faster!)\n");
 				printf("      --watch                 watcher mode (use intofiy to watch a directory)\n");
 				printf(" -i | --watch-dir             directory to watch\n");
 				printf("      --watch-src-cmd         command to launch for watching mode\n");
@@ -822,13 +822,13 @@ static void process_buffer (GstElement *sink) {
 			pthread_mutex_lock(&last_full_frame_mutex);
 			buf_height = height;
 			
-			//if (!last_full_frame || last_full_frame->width != width)
-			last_full_frame = cvCreateImage(cvSize(width, buf_height), IPL_DEPTH_8U, 3);
+			if (!last_full_frame || last_full_frame->width != width)
+				last_full_frame = cvCreateImage(cvSize(width, height), IPL_DEPTH_8U, 3);
 
 			pthread_mutex_lock(&frame_mutex);
 			if (!frame || frame->width != width) {							
-				frame = cvCreateImage(cvSize(width, buf_height), IPL_DEPTH_8U, 3);
-				clear_frame(frame);
+				frame = cvCreateImage(cvSize(width, height), IPL_DEPTH_8U, 3);
+				//clear_frame(frame);
 			}
 			pthread_mutex_unlock(&frame_mutex);
 

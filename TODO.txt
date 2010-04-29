@@ -1,0 +1,31 @@
+
+known issues:
+* "--pre" does not work (no write to videofile)
+* "--no-downscale" does not work
+* "--watch-src-cmd" not yet implemented
+* need "export LANG=C" for gps data to be correctly
+* data preview (why is it not white?)
+
+todo:
+* cleanup
+* no-downscale mode. write full frames to gl buffer.
+* zoom & fullscreen for "no-downscale" mode
+* drop-frame option
+* short-cuts (line-height, drop,...)
+
+
+further away:
+* add sound recording
+* multi-camera support
+* integrate camcontrols into linescanner
+* post-processing tools
+
+camcontrols:
+* read params from config or from camera?
+* update from camera?
+* load/save settings
+
+camcontrol353.py:
+* white balance!
+* photofinish mode
+* cleanup
