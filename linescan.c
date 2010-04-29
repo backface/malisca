@@ -100,7 +100,7 @@ int flag_display = 1;
 int flag_gps = 1;
 int flag_watcher_mode = 0;
 int flag_prescanned=0;
-int flag_downscale=0;
+int flag_downscale=1;
 
 double fps;
 double fps_time;
@@ -230,7 +230,7 @@ void read_options(int argc, char *argv[]) {
 		{"nodisplay", 	no_argument, &flag_display, 0},
 		{"pre",			no_argument, &flag_prescanned, 1},
 		{"gps", 		no_argument, &flag_gps, 1},
-		{"downscale", 	no_argument, &flag_downscale, 1},
+		{"no-downscale",no_argument, &flag_downscale, 0},
 		/* These options don't set a flag.
 			We distinguish them by their indices. */
 		{"output",  	required_argument, 0, 'o'},
@@ -396,7 +396,21 @@ void gps_log()
 void gl_init() 
 {
 	//printf("create new image\n");
-	buffer4gl = cvCreateImage(cvSize(512, 512), 8, 3);
+	if (flag_downscale)
+		buffer4gl = cvCreateImage(cvSize(512, 512), 8, 3);
+	else {
+		buffer4gl = cvCreateImage(cvSize(frame->width, frame->width), 8, 3);
+
+		int i;
+		tilenr = frame->width / frame->height;
+		tile_width = (buffer4gl->width );
+		tile_height = (buffer4gl->height / tilenr);
+
+		for(i = 0; i < tilenr; i++) {	
+			tilebuffer[i] = cvCreateImage(cvSize(frame->width, frame->height), 8, 3);		
+		}	
+	}
+	
 	GLenum format = IsBGR(buffer4gl->channelSeq) ? GL_BGR_EXT : GL_RGBA;
 	
 	//printf("setup texture\n");	
@@ -408,19 +422,20 @@ void gl_init()
 	//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, buffer4gl->width, buffer4gl->height, 0, format, GL_UNSIGNED_BYTE, buffer4gl->imageData);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA,
+		buffer4gl->width, buffer4gl->height,
+		0, format, GL_UNSIGNED_BYTE, buffer4gl->imageData);		
 }
 
 void gl_write(float x, float y, char *string) {
 	int len, i;
-	//glColor4f(1.0, 1.0, 1.0, 1.0);
+	glColor4f(1.0, 1.0, 1.0, 1.0);
 	glRasterPos2f(x, y);
 	len = (int) strlen(string);
 	for (i = 0; i < len; i++) {
 		glutBitmapCharacter(font, string[i]);
 	}
 }
-
 
 void gl_upload(IplImage *frame)
 {
@@ -434,32 +449,47 @@ void gl_upload(IplImage *frame)
 	if (!frame) {
 		printf("could not load frame");
 	}
-	else {
-				
+	else {				
 		int i;
-		tilenr = frame->width / frame->height;
-		tile_width = (buffer4gl->width );
-		tile_height = (buffer4gl->height / tilenr);
+
+		if (flag_downscale) {
+			
+			tilenr = frame->width / frame->height;
+			tile_width = (buffer4gl->width );
+			tile_height = (buffer4gl->height / tilenr);
 		
-		IplImage* tile_tmp = cvCreateImage( cvSize( tile_width, tile_height), 8, 3 );
+			IplImage* tile_tmp = cvCreateImage( cvSize( tile_width, tile_height), 8, 3 );
 		
-		// update last tile
-		cvResize(frame, tile_tmp, 0);		
-		cvSetImageROI(buffer4gl, cvRect( 0, (tilenr-1) * tile_height, tile_width, tile_height) );
-		cvResize(tile_tmp, buffer4gl, 0);
-		cvResetImageROI(buffer4gl);		
+			// update last tile
+			cvResize(frame, tile_tmp, 0);		
+			cvSetImageROI(buffer4gl, cvRect( 0, (tilenr-1) * tile_height, tile_width, tile_height) );
+			cvResize(tile_tmp, buffer4gl, 0);
+			cvResetImageROI(buffer4gl);		
 		
-		GLenum format = IsBGR(buffer4gl->channelSeq) ? GL_BGR_EXT : GL_RGBA;
+			GLenum format = IsBGR(buffer4gl->channelSeq) ? GL_BGR_EXT : GL_RGBA;
 		
-		glBindTexture(GL_TEXTURE_2D, imageID);
-		glTexSubImage2D(GL_TEXTURE_2D, 0, 
-			0, 0, 
-			buffer4gl->width, buffer4gl->height, 
-			format, GL_UNSIGNED_BYTE, 
-			buffer4gl->imageData); 
+			glBindTexture(GL_TEXTURE_2D, imageID);
+			glTexSubImage2D(GL_TEXTURE_2D, 0, 
+				0, 0, 
+				buffer4gl->width, buffer4gl->height, 
+				format, GL_UNSIGNED_BYTE, 
+				buffer4gl->imageData); 
 		
-		cvReleaseImage( &tile_tmp );
-		//cvReleaseImage( &frame );
+			cvReleaseImage( &tile_tmp );
+
+		} else {		
+		
+			GLenum format = IsBGR(frame->channelSeq) ? GL_BGR_EXT : GL_RGBA;
+		
+			glBindTexture(GL_TEXTURE_2D, imageID);
+			glTexSubImage2D(GL_TEXTURE_2D, 0, 
+				0,  (tilenr -1) * tile_height, 
+				frame->width, frame->height, 
+				format, 
+				GL_UNSIGNED_BYTE, 
+				frame->imageData); 
+		}	
+		
 	}
 
 	prctl(PR_GET_NAME,p_name);
@@ -478,20 +508,49 @@ void gl_shiftTiles()
 	
 	double t = (double)cvGetTickCount();
 	int i;
+
+	if(frame) {	
+	
+		//shift tiles
+		if (flag_downscale) {
+			IplImage* tile_tmp = cvCreateImage( cvSize( tile_width, tile_height), 8, 3 );
 		
-	IplImage* tile_tmp = cvCreateImage( cvSize( tile_width, tile_height), 8, 3 );
+			for(i = 0; i < tilenr -1 ; i++) {			
+				cvSetImageROI(buffer4gl, cvRect(0, (i+1) * tile_height, tile_width, tile_height) );
+				cvResize(buffer4gl, tile_tmp, 0);
+				cvResetImageROI(buffer4gl);
 		
-	//shift tiles
-	for(i = 0; i < tilenr -1 ; i++) {			
-		cvSetImageROI(buffer4gl, cvRect(0, (i+1) * tile_height, tile_width, tile_height) );
-		cvResize(buffer4gl, tile_tmp, 0);
-		cvResetImageROI(buffer4gl);
+				cvSetImageROI(buffer4gl, cvRect( 0, (i) * tile_height, tile_width, tile_height) );
+				cvResize(tile_tmp, buffer4gl, 0);
+				cvResetImageROI(buffer4gl);
+			}	
+			cvReleaseImage( &tile_tmp );
+
+		} else {
+			GLenum format = IsBGR(frame->channelSeq) ? GL_BGR_EXT : GL_RGBA;		
+			glBindTexture(GL_TEXTURE_2D, imageID);
 		
-		cvSetImageROI(buffer4gl, cvRect( 0, (i) * tile_height, tile_width, tile_height) );
-		cvResize(tile_tmp, buffer4gl, 0);
-		cvResetImageROI(buffer4gl);
-	}	
-	cvReleaseImage( &tile_tmp );
+			for(i = tilenr ; i > 0; i--) {
+				cvReleaseImage(&tilebuffer[i]);
+				tilebuffer[i] = cvCloneImage(tilebuffer[i-1]);
+				glTexSubImage2D(GL_TEXTURE_2D, 0, 
+					0,  (tilenr - i - 2) * tile_height, 
+					tilebuffer[i]->width, tilebuffer[i]->height,  
+					format, 
+					GL_UNSIGNED_BYTE, 
+					tilebuffer[i]->imageData);			
+			}
+
+			cvReleaseImage(&tilebuffer[0]);
+			tilebuffer[0] = cvCloneImage(frame);
+			glTexSubImage2D(GL_TEXTURE_2D, 0, 
+				0,  (tilenr - 2) * tile_height, 
+				tilebuffer[i]->width, tilebuffer[i]->height,  
+				format, 
+				GL_UNSIGNED_BYTE, 
+				tilebuffer[i]->imageData);
+		}
+	}
 
 	
 	if (flag_verbose) g_print("thread %s: gl tileshift took %.2fms\n",
@@ -648,7 +707,17 @@ int get_filesize(char* str, char* file)
 	return 0;
 }
 
-void write_images()
+void clear_frame(IplImage *frame) 
+{
+	int x,y,j;
+	for(y = 0; y < frame->height; y++)
+		for(x = 0; x < frame->width; x++)
+			for (j = 0; j < 3; j++)
+				frame->imageData[y * frame->width * 3 + x * 3 + j] = 0;
+}
+
+
+void write_images(IplImage *frame)
 {
 	char p_name[16];
 	double tt;
@@ -675,7 +744,7 @@ void write_images()
 			((double)cvGetTickFrequency()*1000.) );
 }
 
-void write_movie_frame()
+void write_movie_frame(IplImage *frame)
 {
 	char p_name[16];
 	double tt;
@@ -694,6 +763,20 @@ void write_movie_frame()
 
 	get_filesize(size_str,output_file);
 }
+
+void write_movie_start(IplImage *frame)
+{
+	CvSize imgSize;
+	imgSize.width = frame->width;
+	imgSize.height = frame->height;
+			
+	if (flag_verbose) printf("Write output to file: %s\n", output_file);
+		writer = cvCreateVideoWriter( 
+			output_file,
+			CV_FOURCC('M','J','P','G'), 100, imgSize, 1);
+			//CV_FOURCC('I', '4', '2', '0'), 100, imgSize, 1);
+}
+
 
 
 static void process_buffer (GstElement *sink) {		
@@ -729,36 +812,56 @@ static void process_buffer (GstElement *sink) {
 		
 		gst_caps_unref(buff_caps);
 
-		//printf("thread %s: lock frame\n", p_name);
-		pthread_mutex_lock(&frame_mutex);
-		
-		if (!frame || frame->width != width) {			
-			printf("Create buffer frame [size: %dx%d]\n", width, buf_height);			
-			frame = cvCreateImage(cvSize(width, buf_height), IPL_DEPTH_8U, 3);			
-			for(y = 0; y < frame->height; y++)
-				for(x = 0; x < frame->width; x++)
-					for (j = 0; j < 3; j++)
-						frame->imageData[y * frame->width * 3 + x * 3 + j] = 0;			
-		}
-		
-		if ( (!writer || frame->width != width) && flag_write_movie) {
-			CvSize imgSize;
-			imgSize.width = frame->width;
-			imgSize.height = frame->height;
-			
-			if (flag_verbose) printf("Write output to file: %s\n", output_file);
-			writer = cvCreateVideoWriter( 
-				output_file,
-				CV_FOURCC('M','J','P','G'), 100, imgSize, 1);
-				//CV_FOURCC('I', '4', '2', '0'), 100, imgSize, 1);
-						
-		}
-				
-		if(!GST_BUFFER_DATA(buffer))
-			printf("NO BUFFER DATA\n");
+		// input is already line-scanned image
+		if (flag_prescanned) {
 
+			outframecount++;
+			
+			pthread_mutex_lock(&last_full_frame_mutex);
+			buf_height = height;
+			
+			if (!last_full_frame || last_full_frame->width != width)
+				last_full_frame = cvCreateImage(cvSize(width, buf_height), IPL_DEPTH_8U, 3);
+			
+			if (!frame || frame->width != width) {							
+				frame = cvCreateImage(cvSize(width, buf_height), IPL_DEPTH_8U, 3);
+			}
+
+			if(!GST_BUFFER_DATA(buffer))
+				printf("error: NO BUFFER DATA\n");					
+			else
+				last_full_frame->imageData = GST_BUFFER_DATA(buffer);
+
+			if(flag_write_images) {
+				write_images(last_full_frame);
+			}
+			
+			if(flag_write_movie) {
+				write_movie_frame(last_full_frame);
+			}				
+				
+			pthread_mutex_unlock(&last_full_frame_mutex);			
+
+		}
+		// do real linescan
+		else {
+			
+			//printf("thread %s: lock frame\n", p_name);
+			pthread_mutex_lock(&frame_mutex);		
+
+			if (!frame || frame->width != width) {			
+				printf("Create buffer frame [size: %dx%d]\n", width, buf_height);			
+				frame = cvCreateImage(cvSize(width, buf_height), IPL_DEPTH_8U, 3);
+				clear_frame(frame);					
+			}
 		
-		if (!flag_prescanned) {
+			if ( (!writer || frame->width != width) && flag_write_movie) {
+				write_movie_start(frame);						
+			}
+				
+			if(!GST_BUFFER_DATA(buffer))
+				printf("NO BUFFER DATA\n");
+
 			// just copy 1 line
 			for(i = 0; i < line_height && frame->height > scanline; i++) {
 				for(x = 0; x < frame->width; x++) {
@@ -776,82 +879,76 @@ static void process_buffer (GstElement *sink) {
 				}	
 				scanline++;
 			}
+			
 			if (i < line_height) {
 				r = line_height - i;
 			} else {
 				r = 0;
 			}
+
+			pthread_mutex_unlock(&frame_mutex);		
+		
+			// if buffer is full		
+			if(scanline >= frame->height || flag_prescanned) {
+						
+				outframecount++;	
+				scanline = 0;
+			
+				if (flag_verbose)
+					g_print("thread %s: buffer [%02d] finished in %.2fms\n",
+						p_name,
+						(int) outframecount,
+						( (double)cvGetTickCount() - tf ) / 
+						( (double)cvGetTickFrequency()*1000.) );
+		
+				if(flag_write_images) {
+					write_images(frame);
+				}
+			
+				if(flag_write_movie) {
+					write_movie_frame(frame);
+				}
+			
+				if (flag_display) {
+					//clone full frame for preview
+					pthread_mutex_lock(&last_full_frame_mutex);
+					last_full_frame = cvCloneImage(frame);
+					pthread_mutex_unlock(&last_full_frame_mutex);
+				
+					//empty working frame				
+					clear_frame(frame);
+						
+					pthread_mutex_unlock(&frame_mutex);						
+				}
+
+				// wenn line_height keine teiler von buffer höhe ist jetzt fortsetzen			
+				pthread_mutex_lock(&frame_mutex);
+				if (r > 0 || !flag_prescanned) {
+					for(i = line_height - r; i < line_height && frame->height > scanline; i++) {
+						for(x = 0; x < frame->width; x++) {
+							((uchar *)(frame->imageData + (scanline) * frame->widthStep))[x * frame->nChannels + 0] =				
+							GST_BUFFER_DATA(buffer)[(height/2 + i) * frame->widthStep + x * frame->nChannels + 0]; // B
+			
+							((uchar *)(frame->imageData + scanline * frame->widthStep))[x * frame->nChannels + 1] =				
+							GST_BUFFER_DATA(buffer)[(height/2 + i) * frame->widthStep + x * frame->nChannels + 1]; // G
+			
+							((uchar *)(frame->imageData + scanline * frame->widthStep))[x*frame->nChannels + 2] =				
+							GST_BUFFER_DATA(buffer)[(height/2 + i) * frame->widthStep + x * frame->nChannels + 2]; // R
+						}	
+					scanline++;
+					}
+				}
+				pthread_mutex_unlock(&frame_mutex);		
+			}
 		}
-		else {
-			pthread_mutex_lock(&last_full_frame_mutex);
-			frame->imageData = 	GST_BUFFER_DATA(buffer);
-			pthread_mutex_unlock(&last_full_frame_mutex);
-		}
-		pthread_mutex_unlock(&frame_mutex);
 		
 		gst_buffer_unref(buffer);
-		
-		// if buffer is full		
-		if(scanline >= frame->height || flag_prescanned) {
-						
-			outframecount++;	
-			scanline = 0;
-			
-			if (flag_verbose)
-				g_print("thread %s: buffer [%02d] finished in %.2fms\n",
-					p_name,
-					(int) outframecount,
-					( (double)cvGetTickCount() - tf ) / 
-					( (double)cvGetTickFrequency()*1000.) );
-				
-			if(flag_write_images) {
-				write_images();
-			}
-			
-			if(flag_write_movie) {
-				write_movie_frame();
-			}
 
-			if (flag_gps) {
-				gps_askfordata();
-				gps_log();
-			}
+		if (flag_gps) {
+			gps_askfordata();
+			gps_log();
+		}	
 			
-			if (flag_display) {
-				//clone full frame for preview
-				pthread_mutex_lock(&last_full_frame_mutex);
-				last_full_frame = cvCloneImage(frame);
-				pthread_mutex_unlock(&last_full_frame_mutex);
-				
-				//empty working frame				
-				for(y = 0; y < frame->height; y++)
-					for(x = 0; x < frame->width; x++)
-						for (j = 0; j < frame->nChannels; j++)
-							frame->imageData[y * frame->width * frame->nChannels + x * frame->nChannels + j] = 0;
-						
-				pthread_mutex_unlock(&frame_mutex);						
-			}
-
-			// wenn line_height keine teiler von buffer höhe ist jetzt fortsetzen			
-			pthread_mutex_lock(&frame_mutex);
-			if (r > 0 || !flag_prescanned) {
-				for(i = line_height - r; i < line_height && frame->height > scanline; i++) {
-					for(x = 0; x < frame->width; x++) {
-						((uchar *)(frame->imageData + (scanline) * frame->widthStep))[x * frame->nChannels + 0] =				
-						GST_BUFFER_DATA(buffer)[(height/2 + i) * frame->widthStep + x * frame->nChannels + 0]; // B
-			
-						((uchar *)(frame->imageData + scanline * frame->widthStep))[x * frame->nChannels + 1] =				
-						GST_BUFFER_DATA(buffer)[(height/2 + i) * frame->widthStep + x * frame->nChannels + 1]; // G
-			
-						((uchar *)(frame->imageData + scanline * frame->widthStep))[x*frame->nChannels + 2] =				
-						GST_BUFFER_DATA(buffer)[(height/2 + i) * frame->widthStep + x * frame->nChannels + 2]; // R
-					}	
-				scanline++;
-				}
-			}
-			pthread_mutex_unlock(&frame_mutex);		
-		} 
-		
 		fps_time += ((double)cvGetTickCount() - t);			
 		
 		if (framecount % 300 == 0) {
@@ -945,15 +1042,86 @@ int inotify_watch()
 				*event = ( struct inotify_event * ) &buffer[ i ];
    
 			if ( event->len ) {
-				if ( event->mask & IN_CLOSE_WRITE ) {
-					sprintf(filename, "%s/%s",
-						watch_dir, event->name);					
-					last_full_frame = cvLoadImage(filename, 1);  
-				}
+				if ( event->mask & IN_CLOSE_WRITE ) {					
+					
+					sprintf(filename, "%s/%s", watch_dir, event->name);										
+					
+					pthread_mutex_lock(&last_full_frame_mutex);
+					last_full_frame = cvLoadImage(filename, 1);
+
+					if (!frame) {
+						frame = cvCloneImage(last_full_frame);
+						clear_frame(frame);
+					}
+
+					if ( (!writer) && flag_write_movie) {
+						write_movie_start(last_full_frame);
+					}
+					
+					outframecount++;
+								
+			
+					if(flag_write_movie) {
+						write_movie_frame(last_full_frame);
+					}
+					pthread_mutex_unlock(&last_full_frame_mutex);
+					
+					if (flag_gps) {
+						gps_askfordata();
+						gps_log();
+					}
+
+					fps_time += ((double)cvGetTickCount() - t);			
+		
+					if (framecount % 20 == 0) {
+							fps = (1000.0 / ((fps_time/20)/((double)cvGetTickFrequency()*1000.)));
+							fps_time = 0;
+					}
+
+					long time_total = ((long)cvGetTickCount() - t_total)/((long)cvGetTickFrequency()*1000.);
+					int hh = (time_total / 1000) / 3600;
+					int mm = ((time_total / 1000) - hh * 3600 )/ 60;
+					int ss = ((time_total / 1000) - mm * 60) % 60;		
+		
+					sprintf(str_info,"[TIME] %02d:%02d:%02d [OUT] %s #%06ld [IN] %s / FPS:%04.2f (%02.2fms) ",
+						hh, mm, ss,
+						size_str,
+						outframecount,				
+						filename,
+						fps ,			
+						((double)cvGetTickCount() - t)/((double)cvGetTickFrequency()*1000.)	);
+
+					g_print("\r-> %s",str_info);
+			
+					if (flag_gps) {				
+						if (gpsfix.mode >= MODE_2D) {
+							sprintf(str_gps, "[GPS] %s, LAT: %.4f LON: %.4f ALT: %.0fm SPD: %.1fkm/h DIST: %.3fkm",
+								gps_status_str,				
+								gpsfix.latitude,
+								gpsfix.longitude,
+								gpsfix.altitude,
+								gpsfix.speed * MPS_TO_KPH,
+							distance / 1000 );
+						} else {
+							sprintf(str_gps, "[GPS] NO FIX");
+						}	
+						//printf("%s",str_gps);
+					}
+
+					printf("   ");
+			
+					t = (double)cvGetTickCount();
+					
+				}			
 			}
-			i += I_EVENT_SIZE + event->len;
-		}		
+		
+		i += I_EVENT_SIZE + event->len;	
+
+		}
 	}
+	printf("end watch: %s\n",watch_dir);
+	inotify_rm_watch( fd, wd ); 
+	close( fd );	
 }
 
 // gstreamer bus callback
@@ -967,7 +1135,8 @@ on_bus_call (GstBus *bus, GstMessage *msg, gpointer data) {
     case GST_MESSAGE_EOS:
 		g_print ("\nGStreamer: (bus) End of stream\n");
 		g_main_loop_quit(loop);
-		//exit(1);
+		pthread_kill(view_thread_id,SIGINT);
+		exit(1);
 		break;
 
     case GST_MESSAGE_ERROR: {
@@ -1026,27 +1195,6 @@ gint main (gint argc, gchar *argv[]) {
 	if (flag_gps)
 		gps_setup();
 
-	// init viewer thread
-	if (flag_display) {		
-		view_thread_id = pthread_mutex_init(&frame_mutex, NULL);
-		if (view_thread_id != 0) {
-			perror("Mutex initialisation failed");
-			exit(EXIT_FAILURE);
-		}
-
-		view_thread_id = pthread_mutex_init(&last_full_frame_mutex, NULL);
-		if (view_thread_id != 0) {
-			perror("Mutex initialisation failed");
-			exit(EXIT_FAILURE);
-		}		
-
-		view_thread_id = pthread_create(&view_thread, NULL, gl_view_thread_func, NULL);
-		if (view_thread_id != 0) {
-			perror("Thread creation failed");
-			exit(EXIT_FAILURE);
-		}		
-	}			
-
 	if (!flag_watcher_mode) {
 		/* init GStreamer */
 		gst_init (&argc, &argv);
@@ -1102,6 +1250,27 @@ gint main (gint argc, gchar *argv[]) {
 		}
 		printf("GStreamer: pipline playing.\n");
 	}
+
+	// init viewer thread
+	if (flag_display) {		
+		view_thread_id = pthread_mutex_init(&frame_mutex, NULL);
+		if (view_thread_id != 0) {
+			perror("Mutex initialisation failed");
+			exit(EXIT_FAILURE);
+		}
+
+		view_thread_id = pthread_mutex_init(&last_full_frame_mutex, NULL);
+		if (view_thread_id != 0) {
+			perror("Mutex initialisation failed");
+			exit(EXIT_FAILURE);
+		}		
+
+		view_thread_id = pthread_create(&view_thread, NULL, gl_view_thread_func, NULL);
+		if (view_thread_id != 0) {
+			perror("Thread creation failed");
+			exit(EXIT_FAILURE);
+		}		
+	}		
 	
 	// start tickers
 	t = (double)cvGetTickCount();
