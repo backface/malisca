@@ -513,6 +513,7 @@ void gl_shiftTiles()
 	
 		//shift tiles
 		if (flag_downscale) {
+			
 			IplImage* tile_tmp = cvCreateImage( cvSize( tile_width, tile_height), 8, 3 );
 		
 			for(i = 0; i < tilenr -1 ; i++) {			
@@ -527,7 +528,8 @@ void gl_shiftTiles()
 			cvReleaseImage( &tile_tmp );
 
 		} else {
-			GLenum format = IsBGR(frame->channelSeq) ? GL_BGR_EXT : GL_RGBA;		
+
+			GLenum format = IsBGR(buffer4gl->channelSeq) ? GL_BGR_EXT : GL_RGBA;		
 			glBindTexture(GL_TEXTURE_2D, imageID);
 		
 			for(i = tilenr ; i > 0; i--) {
@@ -548,7 +550,7 @@ void gl_shiftTiles()
 				tilebuffer[i]->width, tilebuffer[i]->height,  
 				format, 
 				GL_UNSIGNED_BYTE, 
-				tilebuffer[i]->imageData);
+				frame->imageData);
 		}
 	}
 
@@ -588,7 +590,7 @@ void gl_draw()
 	}
 	pthread_mutex_unlock(&last_full_frame_mutex);
 		
-	if (!flag_prescanned) {
+	//if(!flag_prescanned) {
 		pthread_mutex_lock(&frame_mutex);
 		if (frame) {
 			frame_copy =  cvCloneImage(frame);
@@ -597,8 +599,7 @@ void gl_draw()
 			cvReleaseImage( &frame_copy );
 		}
 		pthread_mutex_unlock(&frame_mutex);
-	}
-	
+	//}
 	
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);	
 
@@ -621,8 +622,9 @@ void gl_draw()
         glTexCoord2f(0, 1); glVertex3f(-512,  512  - offset, 0);
     glEnd();
 
-	glRotatef(90, 0, 0, 1); 
-
+	glRotatef(90, 0, 0, 1);
+	
+	glColor4f(1.0, 1.0, 1.0, 1.0);
 	if (draw_line > 0) { 
 		glBegin(GL_LINES);
 			glVertex3f(-512, 0.0, 0.0);
@@ -820,12 +822,15 @@ static void process_buffer (GstElement *sink) {
 			pthread_mutex_lock(&last_full_frame_mutex);
 			buf_height = height;
 			
-			if (!last_full_frame || last_full_frame->width != width)
-				last_full_frame = cvCreateImage(cvSize(width, buf_height), IPL_DEPTH_8U, 3);
-			
+			//if (!last_full_frame || last_full_frame->width != width)
+			last_full_frame = cvCreateImage(cvSize(width, buf_height), IPL_DEPTH_8U, 3);
+
+			pthread_mutex_lock(&frame_mutex);
 			if (!frame || frame->width != width) {							
 				frame = cvCreateImage(cvSize(width, buf_height), IPL_DEPTH_8U, 3);
+				clear_frame(frame);
 			}
+			pthread_mutex_unlock(&frame_mutex);
 
 			if(!GST_BUFFER_DATA(buffer))
 				printf("error: NO BUFFER DATA\n");					
