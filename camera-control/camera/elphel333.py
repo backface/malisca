@@ -27,12 +27,15 @@ class Camera(object):
 		self.logger = logging.getLogger('Camera Elphel353')
 		
 		self.getParamsFromCAM()
-		self.FPS = self.params["FPS"]
-		self.QUALITY = self.params["P_QUALITY"]
+		self.FPS = self.getFPS()
+		self.QUALITY = self.getQuality()
 		self.getExposureParamsFromCAM()
 						
 	def getFPS(self):
-		return float(self.params["FPS"]);
+		if self.params.has_key("FPS"):
+			return float(self.params["FPS"]);
+		else:
+			return 0
 		
 	def setFPS(self, value):
 		self.params["FPS"]=value
@@ -48,7 +51,10 @@ class Camera(object):
 		self.startStream()
 	
 	def getHeight(self):
-		return int(self.params["P_WOI_HEIGHT"])	
+		if self.params.has_key("P_WOI_HEIGHT"):
+			return int(self.params["P_WOI_HEIGHT"])
+		else:
+			return 0
 
 	def setWidth(self,val):
 		self.stopStream()
@@ -59,13 +65,19 @@ class Camera(object):
 		self.startStream()
 						
 	def getWidth(self):
-		return int(self.params["P_WOI_WIDTH"])			
+		if self.params.has_key("P_WOI_WIDTH"):
+			return int(self.params["P_WOI_WIDTH"])
+		else:
+			return 0
 		
 	def setExposure(self,value):
 		self.sendHTTPRequest("admin-bin/ccam.cgi?opt=u+&e=%s" % (value) )
 
 	def getExposure(self):
-		return float(self.params["P_EXPOS"])
+		if self.params.has_key("P_EXPOS"):
+			return float(self.params["P_EXPOS"])
+		else:
+			return 0
 		
 	def startStream(self):
 		time.sleep(1)
@@ -95,10 +107,13 @@ class Camera(object):
 			self.params["S_name"] == "unicast"
 
 	def getMulticastStatus(self):
-		if(self.params["S_name"] == "unicast"):
-			return False
+		if self.params.has_key("S_name"):
+			if self.params["S_name"] == "unicast":
+				return False
+			else:
+				return True
 		else:
-			return True
+			return False
 		
 	def setAutoExposureOff(self):
 		self.sendHTTPRequest("/autoexpos.cgi?reg=1&onoff=0")	
@@ -118,40 +133,61 @@ class Camera(object):
 		self.startStream()	
 					
 	def getQuality(self):
-		return int(self.params["P_QUALITY"])
+		if self.params.has_key("P_QUALITY"):
+			return int(self.params["P_QUALITY"])
+		else:
+			return 0
 
 	def setGain(self,v):
 		self.sendHTTPRequest("admin-bin/ccam.cgi?opt=u&gr=%s&gg=%s&gb=%s&ggb=%s" % (v,v,v,v))
 
 	def getGain(self):
-		return float(self.params["P_GAINR"])		
+		if self.params.has_key("P_GAINR"):
+			return float(self.params["P_GAINR"])
+		else:
+			return 0	
 
 	def getBlacklevel(self):
-		return float(self.params["P_PIXEL_LOW"]);
+		if self.params.has_key("P_PIXEL_LOW"):
+			return float(self.params["P_PIXEL_LOW"])
+		else:
+			return 0
 		
 	def setBlacklevel(self, value):
 		self.sendHTTPRequest("admin-bin/ccam.cgi?opt=u&pxl=%s" % value) 
 
 	def getWhitelevel(self):
-		return float(self.params["P_PIXEL_HIGH"]);
+		if self.params.has_key("P_PIXEL_HIGH"):
+			return float(self.params["P_PIXEL_HIGH"])
+		else:
+			return 0
 		
 	def setWhitelevel(self, value):
 		self.sendHTTPRequest("admin-bin/ccam.cgi?opt=u&pxh=%s" % value) 
 
 	def getGamma(self):
-		return float(self.params["P_GAMMA"])/100.
+		if self.params.has_key("P_GAMMA"):
+			return float(self.params["P_GAMMA"])/100.
+		else:
+			return 0
 		
 	def setGamma(self, value):
 		self.sendHTTPRequest("admin-bin/ccam.cgi?opt=u&gam=%s" % (float(value)*100.))
 
 	def getSaturationRed(self):
-		return float(self.params["P_COLOR_SATURATION_RED"]);
+		if self.params.has_key("P_COLOR_SATURATION_RED"):
+			return float(self.params["P_COLOR_SATURATION_RED"])
+		else:
+			return 0			
 		
 	def setSaturationRed(self, value):
 		self.sendHTTPRequest("admin-bin/ccam.cgi?opt=u&csr=%s" % value)
 
 	def getSaturationBlue(self):
-		return float(self.params["P_COLOR_SATURATION_BLUE"]);
+		if self.params.has_key("P_COLOR_SATURATION_BLUE"):
+			return float(self.params["P_COLOR_SATURATION_BLUE"])
+		else:
+			return 0			
 
 	def setSaturationBlue(self, value):
 		self.sendHTTPRequest("admin-bin/ccam.cgi?opt=u&csb=%s" % value) 		
@@ -160,13 +196,19 @@ class Camera(object):
 		self.sendHTTPRequest("admin-bin/ccam.cgi?opt=u&rscale=%s" % value)
 
 	def getRGLevel(self):
-		return float(self.params["P_RSCALE"]);
+		if self.params.has_key("P_RSCALE"):
+			return float(self.params["P_RSCALE"])
+		else:
+			return 0			
 
 	def setBGLevel(self, value):
 		self.sendHTTPRequest("admin-bin/ccam.cgi?opt=u&bscale=%s" % value)
 
 	def getBGLevel(self):
-		return float(self.params["P_BSCALE"]);
+		if self.params.has_key("P_BSCALE"):
+			return float(self.params["P_BSCALE"])
+		else:
+			return 0			
 
 	def setAutoWhiteBalance(self):
 		self.sendHTTPRequest("admin-bin/ccam.cgi?opt=u&bscale=auto&rscale=auto")

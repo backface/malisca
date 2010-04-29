@@ -220,7 +220,7 @@ class CamControl:
 			self.cam.startNormalMode()
 
 	def on_reboot_clicked(self, obj):
-		os.system("./reboot333")		
+		os.system("./camera/reboot333")		
 
 	def updateParams(self):
 		if self.cam.getParamsFromCAM():

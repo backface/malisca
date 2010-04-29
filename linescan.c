@@ -20,12 +20,13 @@
 
 CvVideoWriter *writer;
 IplImage* buffer4gl;
+IplImage* tilebuffer[100];
 
 pthread_mutex_t frame_mutex;
 IplImage* frame;
 
-pthread_mutex_t buffer_frame_mutex;
-IplImage* buffer_frame;
+pthread_mutex_t last_full_frame_mutex;
+IplImage* last_full_frame;
 
 pthread_t view_thread;
 int view_thread_id;
@@ -52,6 +53,9 @@ GLenum format;
 GLuint imageID;
 int draw_line = 1;
 
+#include <sys/inotify.h>
+#define I_EVENT_SIZE  ( sizeof (struct inotify_event) )
+#define I_BUF_LEN     ( 1024 * ( I_EVENT_SIZE + 16 ) )
 
 #include <sys/stat.h>
 struct stat st;
@@ -78,6 +82,7 @@ char *output_dir = "scan-data";
 char *gst_pipeline, *gst_input_pipeline;
 char str_info[255];
 char str_gps[255];
+char size_str[20];
 
 int scanline = 0;
 int line_height = 2;
@@ -93,8 +98,9 @@ int flag_write_images = 0;
 int flag_verbose = 0;
 int flag_display = 1;
 int flag_gps = 1;
-int flag_watch = 0;
-int flag_prescanned= 0;
+int flag_watcher_mode = 0;
+int flag_prescanned=0;
+int flag_downscale=0;
 
 double fps;
 double fps_time;
@@ -124,10 +130,11 @@ struct confopt confopt[] = {
 	{ "outfile", co_str, { .pc_str = &output_file } },
 	{ "display", co_bool, { .pc_int = &flag_display } },
 	{ "gps", co_bool, { .pc_int = &flag_gps } },
+	{ "downscale", co_bool, { .pc_int = &flag_downscale } },
 	{ "pre-scanned", co_bool, { .pc_int = &flag_prescanned } },
-	{ "watch", co_bool, { .pc_int = &flag_watch } },
+	{ "watch", co_bool, { .pc_int = &flag_watcher_mode } },
 	{ "watch-dir", co_str, { .pc_str = &watch_dir } },
-	{ "watch-dir-cmd", co_str, { .pc_str = &watch_src_cmd } },
+	{ "watch-src-cmd", co_str, { .pc_str = &watch_src_cmd } },
 	{ NULL },
 };
 
@@ -216,24 +223,27 @@ void read_options(int argc, char *argv[]) {
 	
 	static struct option long_options[] = {
 		/* These options set a flag. */
-		{"verbose", no_argument, &flag_verbose, 1},		
-		{"brief",   no_argument, &flag_verbose, 0},
-		{"display", no_argument, &flag_display, 1},
-		{"watch", no_argument, &flag_watch, 1},
-		{"nodisplay", no_argument, &flag_display, 0},
-		{"gps", no_argument, &flag_gps, 1},
+		{"verbose",		no_argument, &flag_verbose, 1},		
+		{"brief",   	no_argument, &flag_verbose, 0},
+		{"display", 	no_argument, &flag_display, 1},
+		{"watch",	 	no_argument, &flag_watcher_mode, 1},
+		{"nodisplay", 	no_argument, &flag_display, 0},
+		{"pre",			no_argument, &flag_prescanned, 1},
+		{"gps", 		no_argument, &flag_gps, 1},
+		{"downscale", 	no_argument, &flag_downscale, 1},
 		/* These options don't set a flag.
 			We distinguish them by their indices. */
-		{"output",  required_argument, 0, 'o'},
-		{"bufferheight",  required_argument, 0, 'b'},
-		{"lineheight",    required_argument, 0, 'l'},
+		{"output",  	required_argument, 0, 'o'},
+		{"bufferheight",required_argument, 0, 'b'},
+		{"lineheight",	required_argument, 0, 'l'},
+		{"watch-dir",	required_argument, 0, 'i'},
 		{0, 0, 0, 0}
 	};
 	
 	while(1) {
 		int option_index = 0;
     
-		c = getopt_long (argc, argv,"o:b:l:ng:p:",long_options, &option_index);
+		c = getopt_long (argc, argv,"o:b:l:ng:p:i:h",long_options, &option_index);
 		
 		if (c == -1)
              break;
@@ -259,22 +269,29 @@ void read_options(int argc, char *argv[]) {
 
 			case 'g':
 				flag_gps = 1;				
-				break;			
+				break;
+
+			case 'i':
+				watch_dir = optarg;
+				break;
+				
+			case 'h':
 				
 			default:
-				printf("Usage: face2monkey [options] file\n");
+				printf("Usage: linescan [options] file\n");
 				printf("Options:\n");
 				printf(" -o | --output FILE           Write result to video FILE.avi \n");
 				printf(" -l | --lineheight HEIGHT     height of scanline [px]\n");
 				printf(" -b | --bufferheight HEIGHT   height of buffer image [px]\n");
-				printf(" -g | --gps                   log gps data n\n");				
+				printf(" -g | --gps                   log GPS data \n");				
 				printf("      --verbose               be verbose \n");
 				printf("      --nodisplay             run without preview\n");
+				printf("      --downscale             downscale image for preview (Faster!)\n");
 				printf("      --watch                 watcher mode (use intofiy to watch a directory)\n");
-				printf("      --watch-dir             directory to watch\n");
-				printf("      --watch-src-cmd         comman to launch for watching mode\n");
-				printf("      --pre-scanned           source is already line-scanned\n");
-				printf(" -h | --help                  print this\n");
+				printf(" -i | --watch-dir             directory to watch\n");
+				printf("      --watch-src-cmd         command to launch for watching mode\n");
+				printf("      --pre                   source is already line-scanned\n");
+				printf(" -h | --help                  print this help\n");
 				exit(0);				
 		}
 	}	
@@ -504,13 +521,13 @@ void gl_draw()
 	double t = (double)cvGetTickCount();
 	IplImage* frame_copy;
 
-	pthread_mutex_lock(&buffer_frame_mutex);
-	if (buffer_frame) {		
-		gl_upload(buffer_frame);
-		cvReleaseImage( &buffer_frame );
+	pthread_mutex_lock(&last_full_frame_mutex);
+	if (last_full_frame) {		
+		gl_upload(last_full_frame);
+		cvReleaseImage( &last_full_frame );
 		gl_shiftTiles();				
 	}
-	pthread_mutex_unlock(&buffer_frame_mutex);
+	pthread_mutex_unlock(&last_full_frame_mutex);
 		
 	if (!flag_prescanned) {
 		pthread_mutex_lock(&frame_mutex);
@@ -609,35 +626,98 @@ void *gl_view_thread_func(void *arg) {
 	return 0;
 }
 
+int get_filesize(char* str, char* file)
+{
+	long long filesize;
 	
+	if( stat(file, &st) == -1)
+			filesize = 0;
+	else
+		filesize = (st.st_size);
+
+	if (filesize > (1024 * 1024 * 1024)) { // GB
+		sprintf(str,"%.1f%s" , (double) filesize / (1024 * 1024 * 1024), "GB");
+	} else if (filesize > (1024 * 1024)) {
+		sprintf(str,"%.1f%s" , (double) filesize / (1024 * 1024), "MB");				
+	} else if (filesize > (1024)) {
+		sprintf(str,"%.1f%s" , (double) filesize / (1024), "KB");
+	} else {
+			sprintf(str,"%.1f%s" , (double) filesize, "B");
+	}
+
+	return 0;
+}
+
+void write_images()
+{
+	char p_name[16];
+	double tt;
+	
+	tt = (double)cvGetTickCount();
+				
+	char output_filename[255];
+	sprintf(output_filename, "%s/img-%06ld.jpg", 
+		output_dir, 
+		outframecount);				
+	if (flag_verbose)
+		printf("thread %s: save to: %s\n",
+			p_name, output_filename);
+
+	pthread_mutex_lock(&frame_mutex);				
+	if(!cvSaveImage(output_filename, frame, 0)) 
+		printf("Could not save: %s\n",output_filename);
+	pthread_mutex_unlock(&frame_mutex);
+				
+	if (flag_verbose)
+		printf("thread %s: save image took %.2fms\n",
+			p_name,
+			((double)cvGetTickCount() - tt ) / 
+			((double)cvGetTickFrequency()*1000.) );
+}
+
+void write_movie_frame()
+{
+	char p_name[16];
+	double tt;
+	
+	tt = (double)cvGetTickCount();
+
+	pthread_mutex_lock(&frame_mutex);
+	cvWriteFrame(writer,frame);
+	pthread_mutex_unlock(&frame_mutex);
+					
+	if (flag_verbose) g_print("thread %s: save video frame took %.2fms\n",
+		p_name,
+		( (double)cvGetTickCount() - tt ) / 
+		( (double)cvGetTickFrequency()*1000.) 
+	);
+
+	get_filesize(size_str,output_file);
+}
+
+
 static void process_buffer (GstElement *sink) {		
-		int i,j,x,y;
+		int i, j, x, y;
+		int r = 0;
 		int height, width;
 		char p_name[16];
-		char size_str[20];
-		long long filesize;
-		
+				
 		prctl(PR_GET_NAME,p_name);
 		//printf("thread %s: poll for new frame\n", p_name);
 
-		GstElement *appsink = sink;
-
-		//printf("thread %s: get sink\n", p_name);
-			
+		GstElement *appsink = sink;			
 		GstBuffer *buffer = 
 			gst_app_sink_pull_buffer(GST_APP_SINK(appsink));		
 
 		if (!buffer)
 			printf("NO BUFFER\n");
-
-		//printf("thread %s: get caps\n", p_name);				
+			
 		GstCaps *buff_caps = 
 			gst_buffer_get_caps(buffer);
 			
 		assert(gst_caps_get_size(buff_caps) == 1);		
 
 		//printf("thread %s: get frame structure\n", p_name);
-
 		GstStructure* structure = 
 			gst_caps_get_structure(buff_caps, 0);
 		
@@ -674,124 +754,62 @@ static void process_buffer (GstElement *sink) {
 						
 		}
 				
-		/*
-		// shif all lines (except for last)
-		for(y = 0; y < frame->height-1; y++)
-			for(x = 0; x < frame->width; x++)
-				for (j = 0; j < 3; j++)
-					frame->imageData[y * frame->width * 3 + x * 3 + j] = 
-						frame->imageData[(y+1) * frame->width * 3 + x * 3 + j];
-		// current scanline
-		for(x = 0; x < frame->width; x++)
-			for (j = 0; j < 3; j++)
-				frame->imageData[(frame->height - 1) * frame->width * 3 + x * 3 + j] = 
-					GST_BUFFER_DATA(buffer)[height/2*frame->width*3 + x * 3 + j];
-		*/
-					
-		// just copy 1 line
-		/*
-		 for(x = 0; x < frame->width; x++)
-			for (j = 0; j < 3; j++)			
-				frame->imageData[scanline  * frame->width * 3 + x * 3 + j] = 
-					GST_BUFFER_DATA(buffer)[height/2*frame->width*3 + x * 3 + j];							
-		*/
-		// just copy 1 line
-
 		if(!GST_BUFFER_DATA(buffer))
 			printf("NO BUFFER DATA\n");
 
+		
 		if (!flag_prescanned) {
-			for(i = 0; i < line_height & frame->height >= scanline;i++) {
+			// just copy 1 line
+			for(i = 0; i < line_height && frame->height > scanline; i++) {
 				for(x = 0; x < frame->width; x++) {
 					((uchar *)(frame->imageData + (scanline) * frame->widthStep))[x * frame->nChannels + 0] =				
 					//frame->imageData[scanline * frame->width * 3 + x * 3 + j] = 
-					GST_BUFFER_DATA(buffer)[height/2 * frame->widthStep + x * frame->nChannels + 0]; // B
+					GST_BUFFER_DATA(buffer)[(height/2 + i)* frame->widthStep + x * frame->nChannels + 0]; // B
 				
 					((uchar *)(frame->imageData + scanline * frame->widthStep))[x * frame->nChannels + 1] =				
 					//frame->imageData[scanline * frame->width * 3 + x * 3 + j] = 
-					GST_BUFFER_DATA(buffer)[height/2 * frame->widthStep + x * frame->nChannels + 1]; // G
+					GST_BUFFER_DATA(buffer)[(height/2 + i) * frame->widthStep + x * frame->nChannels + 1]; // G
 				
 					((uchar *)(frame->imageData + scanline * frame->widthStep))[x*frame->nChannels + 2] =				
 					//frame->imageData[scanline * frame->width * 3 + x * 3 + j] = 
-					GST_BUFFER_DATA(buffer)[height/2 * frame->widthStep + x * frame->nChannels + 2]; // R
+					GST_BUFFER_DATA(buffer)[(height/2 + i) * frame->widthStep + x * frame->nChannels + 2]; // R
 				}	
 				scanline++;
 			}
+			if (i < line_height) {
+				r = line_height - i;
+			} else {
+				r = 0;
+			}
 		}
 		else {
+			pthread_mutex_lock(&last_full_frame_mutex);
 			frame->imageData = 	GST_BUFFER_DATA(buffer);
+			pthread_mutex_unlock(&last_full_frame_mutex);
 		}
 		pthread_mutex_unlock(&frame_mutex);
-		//printf("thread %s: unlock frame\n", p_name);
 		
 		gst_buffer_unref(buffer);
 		
 		// if buffer is full		
-		if(scanline >= frame->height || flag_prescanned) {	
-			
+		if(scanline >= frame->height || flag_prescanned) {
+						
 			outframecount++;	
 			scanline = 0;
 			
-			if (flag_verbose) g_print("thread %s: buffer [%02d] finished in %.2fms\n",
-				p_name,
-				(int) outframecount,
-				( (double)cvGetTickCount() - tf ) / 
-				( (double)cvGetTickFrequency()*1000.) 
-			);
-
-			//fps = 1000.0 / ( ( ((double)cvGetTickCount()-tf) / ( (double)cvGetTickFrequency()*1000. ) /(frame->height/line_height)));
-			//tf = (double)cvGetTickCount();						
-			
+			if (flag_verbose)
+				g_print("thread %s: buffer [%02d] finished in %.2fms\n",
+					p_name,
+					(int) outframecount,
+					( (double)cvGetTickCount() - tf ) / 
+					( (double)cvGetTickFrequency()*1000.) );
 				
 			if(flag_write_images) {
-				tt = (double)cvGetTickCount();
-				
-				char output_filename[255];
-				sprintf(output_filename, "%s/img-%06d.jpg", 
-						output_dir, 
-						(int) outframecount);				
-				if (flag_verbose) printf("thread %s: save to: %s\n",
-					p_name, output_filename);
-
-				pthread_mutex_lock(&frame_mutex);				
-				if(!cvSaveImage(output_filename, frame, 0)) 
-					printf("Could not save: %s\n",output_filename);
-				pthread_mutex_unlock(&frame_mutex);
-				
-				if (flag_verbose) g_print("thread %s: save image took %.2fms\n",
-					p_name,
-					( (double)cvGetTickCount() - tt ) / 
-					( (double)cvGetTickFrequency()*1000.) 
-				);
+				write_images();
 			}
 			
 			if(flag_write_movie) {
-				tt = (double)cvGetTickCount();
-
-				pthread_mutex_lock(&frame_mutex);
-				cvWriteFrame(writer,frame);
-				pthread_mutex_unlock(&frame_mutex);
-					
-				if (flag_verbose) g_print("thread %s: save video frame took %.2fms\n",
-					p_name,
-					( (double)cvGetTickCount() - tt ) / 
-					( (double)cvGetTickFrequency()*1000.) 
-				);
-				
-				if( stat(output_file, &st) == -1)
-					filesize = 0;
-				else
-					filesize = (st.st_size);
-
-				if (filesize > (1024 * 1024 * 1024)) { // GB
-					sprintf(size_str,"%.1f%s" , (double) filesize / (1024 * 1024 * 1024), "GB");
-				} else if (filesize > (1024 * 1024)) {
-					sprintf(size_str,"%.1f%s" , (double) filesize / (1024 * 1024), "MB");				
-				} else if (filesize > (1024)) {
-					sprintf(size_str,"%.1f%s" , (double) filesize / (1024), "KB");
-				} else {
-					sprintf(size_str,"%.1f%s" , (double) filesize, "B");
-				}
+				write_movie_frame();
 			}
 
 			if (flag_gps) {
@@ -800,41 +818,38 @@ static void process_buffer (GstElement *sink) {
 			}
 			
 			if (flag_display) {
-				tt = (double)cvGetTickCount();
-
-				//gl_upload(frame);
-				//gl_shiftTiles();
-
-				pthread_mutex_lock(&buffer_frame_mutex);
-				buffer_frame = cvCloneImage(frame);
-				pthread_mutex_unlock(&buffer_frame_mutex);
+				//clone full frame for preview
+				pthread_mutex_lock(&last_full_frame_mutex);
+				last_full_frame = cvCloneImage(frame);
+				pthread_mutex_unlock(&last_full_frame_mutex);
 				
-				//empty frame
-				if (flag_verbose) printf("thread %s: empty frame\n", p_name);
-				
+				//empty working frame				
 				for(y = 0; y < frame->height; y++)
 					for(x = 0; x < frame->width; x++)
 						for (j = 0; j < frame->nChannels; j++)
 							frame->imageData[y * frame->width * frame->nChannels + x * frame->nChannels + j] = 0;
-				
-				if (!flag_prescanned) {
-					for(i = i; i < line_height & frame->height >= scanline;i++) {
-						for(x = 0; x < frame->width; x++) {
-							((uchar *)(frame->imageData + (scanline) * frame->widthStep))[x * frame->nChannels + 0] =				
-							GST_BUFFER_DATA(buffer)[height/2 * frame->widthStep + x * frame->nChannels + 0]; // B
-				
-							((uchar *)(frame->imageData + scanline * frame->widthStep))[x * frame->nChannels + 1] =				
-							GST_BUFFER_DATA(buffer)[height/2 * frame->widthStep + x * frame->nChannels + 1]; // G
-				
-							((uchar *)(frame->imageData + scanline * frame->widthStep))[x*frame->nChannels + 2] =				
-						GST_BUFFER_DATA(buffer)[height/2 * frame->widthStep + x * frame->nChannels + 2]; // R
-						}	
-					scanline++;
-					}
-				}				
-				pthread_mutex_unlock(&frame_mutex);
 						
+				pthread_mutex_unlock(&frame_mutex);						
 			}
+
+			// wenn line_height keine teiler von buffer höhe ist jetzt fortsetzen			
+			pthread_mutex_lock(&frame_mutex);
+			if (r > 0 || !flag_prescanned) {
+				for(i = line_height - r; i < line_height && frame->height > scanline; i++) {
+					for(x = 0; x < frame->width; x++) {
+						((uchar *)(frame->imageData + (scanline) * frame->widthStep))[x * frame->nChannels + 0] =				
+						GST_BUFFER_DATA(buffer)[(height/2 + i) * frame->widthStep + x * frame->nChannels + 0]; // B
+			
+						((uchar *)(frame->imageData + scanline * frame->widthStep))[x * frame->nChannels + 1] =				
+						GST_BUFFER_DATA(buffer)[(height/2 + i) * frame->widthStep + x * frame->nChannels + 1]; // G
+			
+						((uchar *)(frame->imageData + scanline * frame->widthStep))[x*frame->nChannels + 2] =				
+						GST_BUFFER_DATA(buffer)[(height/2 + i) * frame->widthStep + x * frame->nChannels + 2]; // R
+					}	
+				scanline++;
+				}
+			}
+			pthread_mutex_unlock(&frame_mutex);		
 		} 
 		
 		fps_time += ((double)cvGetTickCount() - t);			
@@ -848,8 +863,7 @@ static void process_buffer (GstElement *sink) {
 		long time_total = ((long)cvGetTickCount() - t_total)/((long)cvGetTickFrequency()*1000.);
 		int hh = (time_total / 1000) / 3600;
 		int mm = ((time_total / 1000) - hh * 3600 )/ 60;
-		int ss = ((time_total / 1000) - mm * 60) % 60;
-		
+		int ss = ((time_total / 1000) - mm * 60) % 60;		
 		
 		sprintf(str_info,"[TIME] %02d:%02d:%02d [OUT] %s #%06ld [IN] #%06ld / FPS:%04.2f (%02.2fms) ",
 			hh, mm, ss,
@@ -892,6 +906,54 @@ static void on_new_buffer (GstElement *element, gpointer data)
 		
 	if (flag_verbose) printf("thread %s: has new buffer\n",
 		p_name);
+}
+
+int inotify_watch()
+{
+	int length, i = 0;
+	int fd;
+	int wd;
+	char buffer[I_BUF_LEN];
+	char filename[255];
+	
+	// Initialize inotify
+	if (watch_dir == NULL)
+		watch_dir = "./";
+		
+	fd = inotify_init();
+	if ( fd < 0 ) {
+		perror( "inotify_init failed" );
+	}
+	wd = inotify_add_watch( fd, watch_dir, IN_CLOSE_WRITE );	
+
+	printf("watch directory %s\n",watch_dir);
+	// main loop
+	int done = 0;	
+	while ( !done ) {  
+		framecount++;
+		length = 0;
+		i = 0;
+		length = read( fd, buffer, I_BUF_LEN );  
+
+		if ( length < 0 ) {
+			perror( "read" );
+		}  
+
+		// got new image
+		while ( i < length ) {
+			struct inotify_event
+				*event = ( struct inotify_event * ) &buffer[ i ];
+   
+			if ( event->len ) {
+				if ( event->mask & IN_CLOSE_WRITE ) {
+					sprintf(filename, "%s/%s",
+						watch_dir, event->name);					
+					last_full_frame = cvLoadImage(filename, 1);  
+				}
+			}
+			i += I_EVENT_SIZE + event->len;
+		}		
+	}
 }
 
 // gstreamer bus callback
@@ -949,8 +1011,6 @@ gint main (gint argc, gchar *argv[]) {
 	read_config();
 	read_options(argc, argv);
 
-	printf("%s\n",output_file);
-
 	if(output_file == NULL) {
 		time_t now;
 		struct tm *curtime;
@@ -961,75 +1021,20 @@ gint main (gint argc, gchar *argv[]) {
 		printf("%s",buf);
 		output_file = buf;
 	}
-	
-	/* init GStreamer */
-	gst_init (&argc, &argv);
-	loop = g_main_loop_new (NULL, FALSE);
-	 
-	/* set up pipeline */
-	printf("GStreamer: set up input pipeline: (%s)\n",gst_pipeline);
-	strcat(gst_pipeline,"! appsink name=sink");
-	pipeline = gst_parse_launch(gst_pipeline,NULL);
 
-	/* set up bus */
-	bus = gst_pipeline_get_bus (GST_PIPELINE (pipeline));
-	gst_bus_add_watch (bus, on_bus_call, loop);
-	gst_object_unref (bus);
+	// init gps
+	if (flag_gps)
+		gps_setup();
 
-	/* set up appsink */
-	sink = gst_bin_get_by_name(GST_BIN(pipeline),"sink");
-	
-	g_object_set (G_OBJECT (sink), 
-		"emit-signals", TRUE, 
-		"sync", FALSE, 
-		"max-buffers", 50,
-		"drop",TRUE,
-		NULL);
-		
-	g_signal_connect (G_OBJECT(sink), 
-		"new-buffer",
-		G_CALLBACK (on_new_buffer),
-		loop);
-	
-    caps= gst_caps_new_simple("video/x-raw-rgb",
-								"red_mask",   G_TYPE_INT, 255,
- 	                            "green_mask", G_TYPE_INT, 65280,
- 	                            "blue_mask",  G_TYPE_INT, 16711680,
-                                NULL);
-    gst_app_sink_set_caps(GST_APP_SINK(sink), caps);
-	gst_caps_unref(caps);	
-	
-	if(gst_element_set_state(GST_ELEMENT(pipeline), 
-		GST_STATE_READY) == GST_STATE_CHANGE_FAILURE) {
-			printf("GStreamer: unable to set pipeline to paused\n");
-			gst_object_unref(pipeline);
-			exit(0);
-	}
-	printf("GStreamer: pipline paused.\n");
-
-	if(gst_element_set_state(GST_ELEMENT(pipeline), 
-		GST_STATE_PLAYING) ==  GST_STATE_CHANGE_FAILURE) {
-			printf("GStreamer: unable to set pipeline to play\n");
-			gst_object_unref(pipeline);
-			exit(0);
-	}
-	printf("GStreamer: pipline playing.\n");
-
-	
-	// start ticker
-	t = (double)cvGetTickCount();
-	t_total = (double)cvGetTickCount();
-
-	
-	if (flag_display) {
-		
+	// init viewer thread
+	if (flag_display) {		
 		view_thread_id = pthread_mutex_init(&frame_mutex, NULL);
 		if (view_thread_id != 0) {
 			perror("Mutex initialisation failed");
 			exit(EXIT_FAILURE);
 		}
 
-		view_thread_id = pthread_mutex_init(&buffer_frame_mutex, NULL);
+		view_thread_id = pthread_mutex_init(&last_full_frame_mutex, NULL);
 		if (view_thread_id != 0) {
 			perror("Mutex initialisation failed");
 			exit(EXIT_FAILURE);
@@ -1040,23 +1045,80 @@ gint main (gint argc, gchar *argv[]) {
 			perror("Thread creation failed");
 			exit(EXIT_FAILURE);
 		}		
-	}
+	}			
 
-	if (flag_gps)
-		gps_setup();
+	if (!flag_watcher_mode) {
+		/* init GStreamer */
+		gst_init (&argc, &argv);
+		loop = g_main_loop_new (NULL, FALSE);
+	 
+		/* set up pipeline */
+		printf("GStreamer: set up input pipeline: (%s)\n",gst_pipeline);
+		strcat(gst_pipeline,"! appsink name=sink");
+		pipeline = gst_parse_launch(gst_pipeline,NULL);
+
+		/* set up bus */
+		bus = gst_pipeline_get_bus (GST_PIPELINE (pipeline));
+		gst_bus_add_watch (bus, on_bus_call, loop);
+		gst_object_unref (bus);
+
+		/* set up appsink */
+		sink = gst_bin_get_by_name(GST_BIN(pipeline),"sink");
+	
+		g_object_set (G_OBJECT (sink), 
+			"emit-signals", TRUE, 
+			"sync", FALSE, 
+			"max-buffers", 50,
+			"drop",TRUE,
+			NULL);
 		
+		g_signal_connect (G_OBJECT(sink), 
+			"new-buffer",
+			G_CALLBACK (on_new_buffer),
+			loop);
+	
+		caps= gst_caps_new_simple("video/x-raw-rgb",
+					"red_mask",   G_TYPE_INT, 255,
+ 	                "green_mask", G_TYPE_INT, 65280,
+ 	                "blue_mask",  G_TYPE_INT, 16711680,
+                     NULL);
+		gst_app_sink_set_caps(GST_APP_SINK(sink), caps);
+		gst_caps_unref(caps);	
+
+		// start gstreamer pipeline
+		if(gst_element_set_state(GST_ELEMENT(pipeline), 
+			GST_STATE_READY) == GST_STATE_CHANGE_FAILURE) {
+				printf("GStreamer: unable to set pipeline to paused\n");
+				gst_object_unref(pipeline);
+				exit(0);
+		}
+		printf("GStreamer: pipline paused.\n");
+
+		if(gst_element_set_state(GST_ELEMENT(pipeline), 
+			GST_STATE_PLAYING) ==  GST_STATE_CHANGE_FAILURE) {
+				printf("GStreamer: unable to set pipeline to play\n");
+				gst_object_unref(pipeline);
+				exit(0);
+		}
+		printf("GStreamer: pipline playing.\n");
+	}
+	
+	// start tickers
+	t = (double)cvGetTickCount();
+	t_total = (double)cvGetTickCount();
+
 
 	/* run main loop */
-	g_print ("now running...\n");	
-	g_main_loop_run (loop);
+	
 
-	/*
-	done = 0;
-	while (!done) {
-			
-		poll_and_process(sink);
-		
-	}*/
+	if (!flag_watcher_mode) {
+		printf("now running...\n");
+		g_main_loop_run (loop);
+	}
+	else {
+		printf("running in watcher mode\n");
+		inotify_watch();
+	}
 
 	/* exit */
 	gst_element_set_state (pipeline, GST_STATE_NULL);
