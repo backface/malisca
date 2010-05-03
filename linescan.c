@@ -837,6 +837,10 @@ static void process_buffer (GstElement *sink) {
 			else
 				last_full_frame->imageData = GST_BUFFER_DATA(buffer);
 
+			if ( (!writer || frame->width != width) && flag_write_movie) {
+				write_movie_start(frame);						
+			}				
+
 			if(flag_write_images) {
 				write_images(last_full_frame);
 			}
