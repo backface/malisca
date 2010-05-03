@@ -1,0 +1,11 @@
+malisca
+a linescanner application..
+
+requires:
+* gstreamer 0.10
+* openCV
+* openGL
+* libgps / gpsd (for gps support)
+
+more soon...
+

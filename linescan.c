@@ -996,7 +996,7 @@ static void process_buffer (GstElement *sink) {
 			//printf("%s",str_gps);
 		}
 
-		printf("   ");
+		printf(" ");
 			
 		t = (double)cvGetTickCount();		
 }
@@ -1092,7 +1092,7 @@ int inotify_watch()
 					int mm = ((time_total / 1000) - hh * 3600 )/ 60;
 					int ss = ((time_total / 1000) - mm * 60) % 60;		
 		
-					sprintf(str_info,"[TIME] %02d:%02d:%02d [OUT] %s #%06ld [IN] %s / FPS:%04.2f (%02.2fms) ",
+					sprintf(str_info,"%02d:%02d:%02d [OUT] %s #%06ld [IN] %s / FPS:%04.2f (%02.2fms) ",
 						hh, mm, ss,
 						size_str,
 						outframecount,				

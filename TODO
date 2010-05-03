@@ -1,23 +1,21 @@
 
 known issues:
-* "--pre" does not work (no write to videofile)
 * "--no-downscale" does not work
 * "--watch-src-cmd" not yet implemented
 * need "export LANG=C" for gps data to be correctly
-* data preview (why is it not white?)
 
 todo:
+* data log preview (why is it not white?)
 * cleanup
-* no-downscale mode. write full frames to gl buffer.
-* zoom & fullscreen for "no-downscale" mode
+* downscale mode: write full frames to gl buffer.
+* enable zoom & fullscreen for "no-downscale" mode
 * drop-frame option
 * short-cuts (line-height, drop,...)
-
+* integrate camcontrols into linescanner?
 
 further away:
 * add sound recording
 * multi-camera support
-* integrate camcontrols into linescanner
 * post-processing tools
 
 camcontrols:
