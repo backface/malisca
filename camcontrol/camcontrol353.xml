@@ -4,15 +4,14 @@
   <!-- interface-naming-policy project-wide -->
   <object class="GtkWindow" id="window">
     <property name="border_width">1</property>
-    <property name="title" translatable="yes">cam control</property>
+    <property name="title" translatable="yes">Elphel353 - controls</property>
     <property name="modal">True</property>
-    <property name="default_width">500</property>
+    <property name="default_width">400</property>
     <property name="icon_name">camera-video</property>
     <signal name="destroy" handler="on_window_destroy"/>
     <child>
       <object class="GtkVBox" id="vbox1">
         <property name="visible">True</property>
-        <property name="orientation">vertical</property>
         <property name="spacing">2</property>
         <child>
           <object class="GtkMenuBar" id="menubar">
@@ -70,46 +69,12 @@
           </packing>
         </child>
         <child>
-          <object class="GtkExpander" id="preview_expander">
+          <object class="GtkToggleButton" id="preview">
+            <property name="label" translatable="yes">Preview</property>
             <property name="visible">True</property>
             <property name="can_focus">True</property>
-            <property name="events">GDK_EXPOSURE_MASK | GDK_STRUCTURE_MASK</property>
-            <property name="border_width">3</property>
-            <property name="use_underline">True</property>
-            <child>
-              <object class="GtkHBox" id="hbox1">
-                <property name="visible">True</property>
-                <child>
-                  <object class="GtkCheckButton" id="preview">
-                    <property name="label" translatable="yes">preview</property>
-                    <property name="visible">True</property>
-                    <property name="can_focus">True</property>
-                    <property name="receives_default">False</property>
-                    <property name="tooltip_text" translatable="yes">show preview video</property>
-                    <property name="draw_indicator">True</property>
-                    <signal name="toggled" handler="on_preview_toggled"/>
-                  </object>
-                  <packing>
-                    <property name="position">0</property>
-                  </packing>
-                </child>
-                <child>
-                  <placeholder/>
-                </child>
-                <child>
-                  <placeholder/>
-                </child>
-              </object>
-            </child>
-            <child type="label">
-              <object class="GtkLabel" id="label3">
-                <property name="visible">True</property>
-                <property name="label" translatable="yes">preview</property>
-                <attributes>
-                  <attribute name="weight" value="bold"/>
-                </attributes>
-              </object>
-            </child>
+            <property name="receives_default">True</property>
+            <signal name="toggled" handler="on_preview_toggled"/>
           </object>
           <packing>
             <property name="expand">False</property>
@@ -130,10 +95,10 @@
             <property name="visible">True</property>
             <property name="can_focus">True</property>
             <property name="border_width">3</property>
+            <property name="expanded">True</property>
             <child>
               <object class="GtkVBox" id="vbox4">
                 <property name="visible">True</property>
-                <property name="orientation">vertical</property>
                 <child>
                   <object class="GtkTable" id="table1">
                     <property name="visible">True</property>
@@ -243,6 +208,7 @@
                       <object class="GtkSpinButton" id="quality">
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
+                        <property name="tooltip_text" translatable="yes">JPEG Quality</property>
                         <property name="max_length">4</property>
                         <property name="invisible_char">&#x2022;</property>
                         <property name="width_chars">5</property>
@@ -464,6 +430,8 @@
                       <object class="GtkHScale" id="gain">
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
+                        <property name="tooltip_text" translatable="yes">Gain value</property>
+                        <property name="update_policy">discontinuous</property>
                         <property name="adjustment">gain_adjustment</property>
                         <signal name="value_changed" handler="on_gain_value_changed"/>
                       </object>
@@ -474,84 +442,6 @@
                   </object>
                   <packing>
                     <property name="position">1</property>
-                  </packing>
-                </child>
-                <child>
-                  <object class="GtkHBox" id="hbox4">
-                    <property name="visible">True</property>
-                    <property name="border_width">5</property>
-                    <child>
-                      <object class="GtkLabel" id="label9">
-                        <property name="visible">True</property>
-                        <property name="xalign">0</property>
-                        <property name="yalign">0.89999997615814209</property>
-                        <property name="label" translatable="yes">White: </property>
-                      </object>
-                      <packing>
-                        <property name="expand">False</property>
-                        <property name="position">0</property>
-                      </packing>
-                    </child>
-                    <child>
-                      <object class="GtkHScale" id="white_balance_level">
-                        <property name="visible">True</property>
-                        <property name="sensitive">False</property>
-                        <property name="can_focus">True</property>
-                      </object>
-                      <packing>
-                        <property name="position">1</property>
-                      </packing>
-                    </child>
-                  </object>
-                  <packing>
-                    <property name="position">2</property>
-                  </packing>
-                </child>
-                <child>
-                  <object class="GtkCheckButton" id="white_balance">
-                    <property name="label" translatable="yes">auto white balance</property>
-                    <property name="visible">True</property>
-                    <property name="can_focus">True</property>
-                    <property name="receives_default">False</property>
-                    <property name="border_width">5</property>
-                    <property name="draw_indicator">True</property>
-                    <signal name="toggled" handler="on_white_balance_toggled"/>
-                  </object>
-                  <packing>
-                    <property name="position">3</property>
-                  </packing>
-                </child>
-                <child>
-                  <object class="GtkHBox" id="hbox5">
-                    <property name="visible">True</property>
-                    <property name="border_width">5</property>
-                    <child>
-                      <object class="GtkLabel" id="label10">
-                        <property name="visible">True</property>
-                        <property name="xalign">0</property>
-                        <property name="yalign">0.89999997615814209</property>
-                        <property name="label" translatable="yes">Black: </property>
-                      </object>
-                      <packing>
-                        <property name="expand">False</property>
-                        <property name="position">0</property>
-                      </packing>
-                    </child>
-                    <child>
-                      <object class="GtkHScale" id="blacklevel">
-                        <property name="visible">True</property>
-                        <property name="can_focus">True</property>
-                        <property name="adjustment">blacklevel_adjustment</property>
-                        <property name="digits">0</property>
-                        <signal name="value_changed" handler="on_blacklevel_value_changed"/>
-                      </object>
-                      <packing>
-                        <property name="position">1</property>
-                      </packing>
-                    </child>
-                  </object>
-                  <packing>
-                    <property name="position">4</property>
                   </packing>
                 </child>
                 <child>
@@ -574,6 +464,8 @@
                       <object class="GtkHScale" id="gamma">
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
+                        <property name="tooltip_text" translatable="yes">Gamma value (0.00-1.00)</property>
+                        <property name="update_policy">discontinuous</property>
                         <property name="adjustment">gamma_adjustment</property>
                         <property name="digits">2</property>
                         <signal name="value_changed" handler="on_gamma_value_changed"/>
@@ -584,18 +476,236 @@
                     </child>
                   </object>
                   <packing>
+                    <property name="position">2</property>
+                  </packing>
+                </child>
+                <child>
+                  <object class="GtkHBox" id="hbox5">
+                    <property name="visible">True</property>
+                    <property name="border_width">5</property>
+                    <child>
+                      <object class="GtkLabel" id="label10">
+                        <property name="visible">True</property>
+                        <property name="xalign">0</property>
+                        <property name="yalign">0.89999997615814209</property>
+                        <property name="label" translatable="yes">Black: </property>
+                      </object>
+                      <packing>
+                        <property name="expand">False</property>
+                        <property name="position">0</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <object class="GtkHScale" id="blacklevel">
+                        <property name="visible">True</property>
+                        <property name="can_focus">True</property>
+                        <property name="tooltip_text" translatable="yes">Blacklevel (0-255)</property>
+                        <property name="update_policy">discontinuous</property>
+                        <property name="adjustment">blacklevel_adjustment</property>
+                        <property name="digits">0</property>
+                        <signal name="value_changed" handler="on_blacklevel_value_changed"/>
+                      </object>
+                      <packing>
+                        <property name="position">1</property>
+                      </packing>
+                    </child>
+                  </object>
+                  <packing>
+                    <property name="position">3</property>
+                  </packing>
+                </child>
+                <child>
+                  <object class="GtkButton" id="white_balance">
+                    <property name="label" translatable="yes">White Balance</property>
+                    <property name="visible">True</property>
+                    <property name="can_focus">True</property>
+                    <property name="receives_default">True</property>
+                    <signal name="clicked" handler="on_white_balance_clicked"/>
+                  </object>
+                  <packing>
+                    <property name="position">4</property>
+                  </packing>
+                </child>
+                <child>
+                  <object class="GtkCheckButton" id="auto_white_balance">
+                    <property name="label" translatable="yes">Auto White Balance</property>
+                    <property name="visible">True</property>
+                    <property name="can_focus">True</property>
+                    <property name="receives_default">False</property>
+                    <property name="border_width">5</property>
+                    <property name="draw_indicator">True</property>
+                    <signal name="toggled" handler="on_auto_white_balance_toggled"/>
+                  </object>
+                  <packing>
                     <property name="position">5</property>
                   </packing>
                 </child>
                 <child>
-                  <placeholder/>
+                  <object class="GtkExpander" id="expander1">
+                    <property name="visible">True</property>
+                    <property name="can_focus">True</property>
+                    <child>
+                      <object class="GtkVBox" id="vbox7">
+                        <property name="visible">True</property>
+                        <child>
+                          <object class="GtkHBox" id="hbox2">
+                            <property name="visible">True</property>
+                            <property name="border_width">5</property>
+                            <child>
+                              <object class="GtkLabel" id="label3">
+                                <property name="visible">True</property>
+                                <property name="xalign">0</property>
+                                <property name="yalign">0.89999997615814209</property>
+                                <property name="label" translatable="yes">CSR:   </property>
+                              </object>
+                              <packing>
+                                <property name="expand">False</property>
+                                <property name="position">0</property>
+                              </packing>
+                            </child>
+                            <child>
+                              <object class="GtkHScale" id="saturation_red">
+                                <property name="visible">True</property>
+                                <property name="can_focus">True</property>
+                                <property name="tooltip_text" translatable="yes">Color saturation / Red</property>
+                                <property name="update_policy">discontinuous</property>
+                                <property name="adjustment">saturation_red_adjustment</property>
+                                <property name="digits">0</property>
+                                <signal name="value_changed" handler="on_saturation_red_value_changed"/>
+                              </object>
+                              <packing>
+                                <property name="position">1</property>
+                              </packing>
+                            </child>
+                          </object>
+                          <packing>
+                            <property name="position">0</property>
+                          </packing>
+                        </child>
+                        <child>
+                          <object class="GtkHBox" id="hbox1">
+                            <property name="visible">True</property>
+                            <property name="border_width">5</property>
+                            <child>
+                              <object class="GtkLabel" id="label9">
+                                <property name="visible">True</property>
+                                <property name="xalign">0</property>
+                                <property name="yalign">0.89999997615814209</property>
+                                <property name="label" translatable="yes">CSB:   </property>
+                              </object>
+                              <packing>
+                                <property name="expand">False</property>
+                                <property name="position">0</property>
+                              </packing>
+                            </child>
+                            <child>
+                              <object class="GtkHScale" id="saturation_blue">
+                                <property name="visible">True</property>
+                                <property name="can_focus">True</property>
+                                <property name="tooltip_text" translatable="yes">Color saturation / Blue</property>
+                                <property name="update_policy">discontinuous</property>
+                                <property name="adjustment">saturation_blue_adjustment</property>
+                                <property name="digits">0</property>
+                                <signal name="value_changed" handler="on_saturation_blue_value_changed"/>
+                              </object>
+                              <packing>
+                                <property name="position">1</property>
+                              </packing>
+                            </child>
+                          </object>
+                          <packing>
+                            <property name="position">1</property>
+                          </packing>
+                        </child>
+                        <child>
+                          <object class="GtkHBox" id="hbox8">
+                            <property name="visible">True</property>
+                            <property name="border_width">5</property>
+                            <child>
+                              <object class="GtkLabel" id="label17">
+                                <property name="visible">True</property>
+                                <property name="xalign">0</property>
+                                <property name="yalign">0.89999997615814209</property>
+                                <property name="label" translatable="yes">RG:    </property>
+                              </object>
+                              <packing>
+                                <property name="expand">False</property>
+                                <property name="position">0</property>
+                              </packing>
+                            </child>
+                            <child>
+                              <object class="GtkHScale" id="RG_level">
+                                <property name="visible">True</property>
+                                <property name="can_focus">True</property>
+                                <property name="tooltip_text" translatable="yes">Red/Green value</property>
+                                <property name="update_policy">discontinuous</property>
+                                <property name="adjustment">RG_adjustment</property>
+                                <property name="digits">3</property>
+                                <signal name="value_changed" handler="on_RG_level_value_changed"/>
+                              </object>
+                              <packing>
+                                <property name="position">1</property>
+                              </packing>
+                            </child>
+                          </object>
+                          <packing>
+                            <property name="position">2</property>
+                          </packing>
+                        </child>
+                        <child>
+                          <object class="GtkHBox" id="hbox9">
+                            <property name="visible">True</property>
+                            <property name="border_width">5</property>
+                            <child>
+                              <object class="GtkLabel" id="label18">
+                                <property name="visible">True</property>
+                                <property name="xalign">0</property>
+                                <property name="yalign">0.89999997615814209</property>
+                                <property name="label" translatable="yes">BG:    </property>
+                              </object>
+                              <packing>
+                                <property name="expand">False</property>
+                                <property name="position">0</property>
+                              </packing>
+                            </child>
+                            <child>
+                              <object class="GtkHScale" id="BG_level">
+                                <property name="visible">True</property>
+                                <property name="can_focus">True</property>
+                                <property name="tooltip_text" translatable="yes">Blue / Green value</property>
+                                <property name="update_policy">discontinuous</property>
+                                <property name="adjustment">BG_adjustment</property>
+                                <property name="digits">3</property>
+                                <signal name="value_changed" handler="on_BG_level_value_changed"/>
+                              </object>
+                              <packing>
+                                <property name="position">1</property>
+                              </packing>
+                            </child>
+                          </object>
+                          <packing>
+                            <property name="position">3</property>
+                          </packing>
+                        </child>
+                      </object>
+                    </child>
+                    <child type="label">
+                      <object class="GtkLabel" id="label19">
+                        <property name="visible">True</property>
+                        <property name="label" translatable="yes">more color setttings</property>
+                      </object>
+                    </child>
+                  </object>
+                  <packing>
+                    <property name="position">6</property>
+                  </packing>
                 </child>
               </object>
             </child>
             <child type="label">
               <object class="GtkLabel" id="label4">
                 <property name="visible">True</property>
-                <property name="label" translatable="yes">image settings</property>
+                <property name="label" translatable="yes">Image settings</property>
                 <attributes>
                   <attribute name="weight" value="bold"/>
                 </attributes>
@@ -621,22 +731,21 @@
             <property name="visible">True</property>
             <property name="can_focus">True</property>
             <property name="border_width">3</property>
+            <property name="expanded">True</property>
             <property name="use_underline">True</property>
             <property name="use_markup">True</property>
             <property name="spacing">2</property>
             <child>
               <object class="GtkVBox" id="vbox2">
                 <property name="visible">True</property>
-                <property name="orientation">vertical</property>
                 <child>
                   <object class="GtkVBox" id="vbox5">
                     <property name="visible">True</property>
-                    <property name="orientation">vertical</property>
                     <child>
                       <object class="GtkHScale" id="fps">
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
-                        <property name="tooltip_text" translatable="yes">framerate</property>
+                        <property name="tooltip_text" translatable="yes">Framerate	</property>
                         <property name="update_policy">discontinuous</property>
                         <property name="adjustment">fps_adjustment</property>
                         <property name="lower_stepper_sensitivity">on</property>
@@ -655,7 +764,8 @@
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
                         <property name="receives_default">False</property>
-                        <property name="tooltip_text" translatable="yes">use internal trigger to establish framerate</property>
+                        <property name="tooltip_text" translatable="yes">use cameras internal trigger to establish framerate
+(workaround)</property>
                         <property name="relief">half</property>
                         <property name="draw_indicator">True</property>
                         <signal name="toggled" handler="on_trigger_toggled"/>
@@ -679,7 +789,7 @@
               <object class="GtkLabel" id="label1">
                 <property name="visible">True</property>
                 <property name="xalign">0.47999998927116394</property>
-                <property name="label" translatable="yes">framerate</property>
+                <property name="label" translatable="yes">Framerate</property>
                 <property name="use_underline">True</property>
                 <attributes>
                   <attribute name="weight" value="bold"/>
@@ -707,18 +817,19 @@
             <property name="visible">True</property>
             <property name="can_focus">True</property>
             <property name="border_width">3</property>
+            <property name="expanded">True</property>
             <property name="use_underline">True</property>
             <property name="use_markup">True</property>
             <child>
               <object class="GtkVBox" id="vbox3">
                 <property name="visible">True</property>
-                <property name="orientation">vertical</property>
                 <child>
                   <object class="GtkCheckButton" id="autoexposure">
-                    <property name="label" translatable="yes">auto-exposure	</property>
+                    <property name="label" translatable="yes">Auto-Exposure	</property>
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
                     <property name="receives_default">False</property>
+                    <property name="tooltip_text" translatable="yes">Enable / Disable auto-exposure</property>
                     <property name="relief">half</property>
                     <property name="draw_indicator">True</property>
                     <signal name="toggled" handler="on_autoexposure_toggled"/>
@@ -734,7 +845,7 @@
                     <property name="sensitive">False</property>
                     <property name="app_paintable">True</property>
                     <property name="can_focus">True</property>
-                    <property name="tooltip_text" translatable="yes">exposure time in milliseconds</property>
+                    <property name="tooltip_text" translatable="yes">Exposure time in milliseconds</property>
                     <property name="update_policy">discontinuous</property>
                     <property name="adjustment">exposure_adjustment</property>
                     <property name="show_fill_level">True</property>
@@ -750,7 +861,7 @@
             <child type="label">
               <object class="GtkLabel" id="label2">
                 <property name="visible">True</property>
-                <property name="label" translatable="yes">expsoure settings</property>
+                <property name="label" translatable="yes">Expsoure settings</property>
                 <property name="use_underline">True</property>
                 <attributes>
                   <attribute name="weight" value="bold"/>
@@ -777,27 +888,27 @@
             <property name="visible">True</property>
             <property name="can_focus">True</property>
             <property name="border_width">3</property>
+            <property name="expanded">True</property>
             <property name="use_underline">True</property>
             <property name="use_markup">True</property>
             <child>
               <object class="GtkVBox" id="vbox6">
                 <property name="visible">True</property>
-                <property name="orientation">vertical</property>
                 <child>
                   <object class="GtkHBox" id="hbox7">
                     <property name="visible">True</property>
                     <child>
-                      <object class="GtkCheckButton" id="streamer">
-                        <property name="label" translatable="yes">run streamer	</property>
+                      <object class="GtkButton" id="streamer">
+                        <property name="label" translatable="yes">Start Streamer</property>
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
-                        <property name="receives_default">False</property>
-                        <property name="relief">half</property>
-                        <property name="draw_indicator">True</property>
-                        <signal name="toggled" handler="on_streamer_toggled"/>
+                        <property name="receives_default">True</property>
+                        <property name="yalign">0</property>
+                        <signal name="clicked" handler="on_streamer_clicked"/>
                       </object>
                       <packing>
                         <property name="expand">False</property>
+                        <property name="padding">1</property>
                         <property name="position">0</property>
                       </packing>
                     </child>
@@ -807,6 +918,7 @@
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
                         <property name="receives_default">False</property>
+                        <property name="tooltip_text" translatable="yes">Enable / disable multicast</property>
                         <property name="draw_indicator">True</property>
                         <signal name="toggled" handler="on_multicast_toggled"/>
                       </object>
@@ -815,7 +927,18 @@
                       </packing>
                     </child>
                     <child>
-                      <placeholder/>
+                      <object class="GtkButton" id="snapshot">
+                        <property name="label" translatable="yes">SNAPSHOT</property>
+                        <property name="visible">True</property>
+                        <property name="can_focus">True</property>
+                        <property name="receives_default">True</property>
+                        <property name="yalign">0</property>
+                        <signal name="clicked" handler="on_snapshot_clicked"/>
+                      </object>
+                      <packing>
+                        <property name="expand">False</property>
+                        <property name="position">2</property>
+                      </packing>
                     </child>
                   </object>
                   <packing>
@@ -825,12 +948,40 @@
                 <child>
                   <placeholder/>
                 </child>
+                <child>
+                  <object class="GtkButton" id="normal">
+                    <property name="label" translatable="yes">Normal Mode</property>
+                    <property name="visible">True</property>
+                    <property name="can_focus">True</property>
+                    <property name="receives_default">True</property>
+                    <property name="yalign">0</property>
+                    <signal name="clicked" handler="on_normal_clicked"/>
+                  </object>
+                  <packing>
+                    <property name="expand">False</property>
+                    <property name="position">2</property>
+                  </packing>
+                </child>
+                <child>
+                  <object class="GtkButton" id="photofinish">
+                    <property name="label" translatable="yes">Photofinish</property>
+                    <property name="visible">True</property>
+                    <property name="can_focus">True</property>
+                    <property name="receives_default">True</property>
+                    <property name="yalign">0</property>
+                    <signal name="clicked" handler="on_photofinish_clicked"/>
+                  </object>
+                  <packing>
+                    <property name="expand">False</property>
+                    <property name="position">3</property>
+                  </packing>
+                </child>
               </object>
             </child>
             <child type="label">
               <object class="GtkLabel" id="label15">
                 <property name="visible">True</property>
-                <property name="label" translatable="yes">streamer</property>
+                <property name="label" translatable="yes">Streamer</property>
                 <property name="use_underline">True</property>
                 <attributes>
                   <attribute name="weight" value="bold"/>
@@ -844,6 +995,15 @@
           </packing>
         </child>
         <child>
+          <object class="GtkHSeparator" id="hseparator5">
+            <property name="visible">True</property>
+          </object>
+          <packing>
+            <property name="expand">False</property>
+            <property name="position">11</property>
+          </packing>
+        </child>
+        <child>
           <object class="GtkButton" id="reboot">
             <property name="label" translatable="yes">reboot</property>
             <property name="visible">True</property>
@@ -854,7 +1014,9 @@
           </object>
           <packing>
             <property name="expand">False</property>
-            <property name="position">11</property>
+            <property name="fill">False</property>
+            <property name="padding">1</property>
+            <property name="position">12</property>
           </packing>
         </child>
         <child>
@@ -952,5 +1114,31 @@
     <property name="step_increment">1</property>
     <property name="page_increment">5</property>
     <property name="page_size">5</property>
+  </object>
+  <object class="GtkAdjustment" id="saturation_red_adjustment">
+    <property name="upper">500</property>
+    <property name="step_increment">1</property>
+    <property name="page_increment">5</property>
+    <property name="page_size">5</property>
+  </object>
+  <object class="GtkAdjustment" id="saturation_blue_adjustment">
+    <property name="upper">500</property>
+    <property name="step_increment">1</property>
+    <property name="page_increment">5</property>
+    <property name="page_size">5</property>
+  </object>
+  <object class="GtkAdjustment" id="RG_adjustment">
+    <property name="lower">0.5</property>
+    <property name="upper">4</property>
+    <property name="step_increment">0.01</property>
+    <property name="page_increment">1</property>
+    <property name="page_size">1</property>
+  </object>
+  <object class="GtkAdjustment" id="BG_adjustment">
+    <property name="lower">0.5</property>
+    <property name="upper">4</property>
+    <property name="step_increment">0.01</property>
+    <property name="page_increment">1</property>
+    <property name="page_size">1</property>
   </object>
 </interface>

@@ -30,17 +30,20 @@ class Camera(object):
 		self.FPS = self.getFPS()
 		self.QUALITY = self.getQuality()
 		self.getExposureParamsFromCAM()
-						
+
+
 	def getFPS(self):
 		if self.params.has_key("FPS"):
 			return float(self.params["FPS"]);
 		else:
 			return 0
+
 		
 	def setFPS(self, value):
 		self.params["FPS"]=value
 		self.FPS=value
 		self.sendHTTPRequest("admin-bin/ccam.cgi?opt=u&fps=%s" % value) 
+
 
 	def setHeight(self,val):
 		self.stopStream()
@@ -49,12 +52,14 @@ class Camera(object):
 			% (val,top))
 		time.sleep(1)
 		self.startStream()
+
 	
 	def getHeight(self):
 		if self.params.has_key("P_WOI_HEIGHT"):
 			return int(self.params["P_WOI_HEIGHT"])
 		else:
 			return 0
+
 
 	def setWidth(self,val):
 		self.stopStream()
@@ -63,21 +68,25 @@ class Camera(object):
 			% (val, top))
 		time.sleep(1)
 		self.startStream()
+
 						
 	def getWidth(self):
 		if self.params.has_key("P_WOI_WIDTH"):
 			return int(self.params["P_WOI_WIDTH"])
 		else:
 			return 0
+
 		
 	def setExposure(self,value):
 		self.sendHTTPRequest("admin-bin/ccam.cgi?opt=u+&e=%s" % (value) )
+
 
 	def getExposure(self):
 		if self.params.has_key("P_EXPOS"):
 			return float(self.params["P_EXPOS"])
 		else:
 			return 0
+
 		
 	def startStream(self):
 		time.sleep(1)
@@ -85,11 +94,13 @@ class Camera(object):
 		self.sendHTTPRequest("sctl.cgi?cmd=start&transport="+transport+"&addr=232.0.0.1&port=20000&fps="+self.params["FPS"])	
 		self.getParamsFromCAM()
 		self.streaming = True
+
 		
 	def stopStream(self):
 		self.sendHTTPRequest("sctl.cgi?cmd=stop")
 		self.getParamsFromCAM()
 		self.streaming = False
+
 
 	def getStreamerStatus(self):
 		if self.params.has_key("S_STREAM"):
@@ -97,14 +108,17 @@ class Camera(object):
 		else:
 			return False
 
+
 	def streamMulticast(self):					
 		self.params["S_name"] == "mcast"
 		if int(self.params["S_STREAM"]) > 0:
 			self.stopStream()
 			self.startStream()
 
+
 	def streamUnicast(self):
 			self.params["S_name"] == "unicast"
+
 
 	def getMulticastStatus(self):
 		if self.params.has_key("S_name"):
@@ -114,23 +128,28 @@ class Camera(object):
 				return True
 		else:
 			return False
+
 		
 	def setAutoExposureOff(self):
 		self.sendHTTPRequest("/autoexpos.cgi?reg=1&onoff=0")	
 		self.getParamsFromCAM()	
+
 		
 	def setAutoExposureOn(self):
 		self.sendHTTPRequest("/autoexpos.cgi?reg=1&onoff=1")	
 		self.getParamsFromCAM()
 
+
 	def getAutoExposureStatus(self):
 		return int(self.exposureParams["AEONOFF"])		
+
 		
 	def setQuality(self,val):
 		self.stopStream()
 		self.params["P_QUALITY"] = val
 		self.sendHTTPRequest("admin-bin/ccam.cgi?opt=vhxc&iq=%s" % (val))
 		self.startStream()	
+
 					
 	def getQuality(self):
 		if self.params.has_key("P_QUALITY"):
@@ -138,8 +157,10 @@ class Camera(object):
 		else:
 			return 0
 
+
 	def setGain(self,v):
 		self.sendHTTPRequest("admin-bin/ccam.cgi?opt=u&gr=%s&gg=%s&gb=%s&ggb=%s" % (v,v,v,v))
+
 
 	def getGain(self):
 		if self.params.has_key("P_GAINR"):
@@ -147,41 +168,50 @@ class Camera(object):
 		else:
 			return 0	
 
+
 	def getBlacklevel(self):
 		if self.params.has_key("P_PIXEL_LOW"):
 			return float(self.params["P_PIXEL_LOW"])
 		else:
 			return 0
+
 		
 	def setBlacklevel(self, value):
 		self.sendHTTPRequest("admin-bin/ccam.cgi?opt=u&pxl=%s" % value) 
+
 
 	def getWhitelevel(self):
 		if self.params.has_key("P_PIXEL_HIGH"):
 			return float(self.params["P_PIXEL_HIGH"])
 		else:
 			return 0
+
 		
 	def setWhitelevel(self, value):
 		self.sendHTTPRequest("admin-bin/ccam.cgi?opt=u&pxh=%s" % value) 
+
 
 	def getGamma(self):
 		if self.params.has_key("P_GAMMA"):
 			return float(self.params["P_GAMMA"])/100.
 		else:
 			return 0
+
 		
 	def setGamma(self, value):
 		self.sendHTTPRequest("admin-bin/ccam.cgi?opt=u&gam=%s" % (float(value)*100.))
+
 
 	def getSaturationRed(self):
 		if self.params.has_key("P_COLOR_SATURATION_RED"):
 			return float(self.params["P_COLOR_SATURATION_RED"])
 		else:
 			return 0			
+
 		
 	def setSaturationRed(self, value):
 		self.sendHTTPRequest("admin-bin/ccam.cgi?opt=u&csr=%s" % value)
+
 
 	def getSaturationBlue(self):
 		if self.params.has_key("P_COLOR_SATURATION_BLUE"):
@@ -189,11 +219,14 @@ class Camera(object):
 		else:
 			return 0			
 
+
 	def setSaturationBlue(self, value):
 		self.sendHTTPRequest("admin-bin/ccam.cgi?opt=u&csb=%s" % value) 		
+
 		
 	def setRGLevel(self, value):
 		self.sendHTTPRequest("admin-bin/ccam.cgi?opt=u&rscale=%s" % value)
+
 
 	def getRGLevel(self):
 		if self.params.has_key("P_RSCALE"):
@@ -201,8 +234,10 @@ class Camera(object):
 		else:
 			return 0			
 
+
 	def setBGLevel(self, value):
 		self.sendHTTPRequest("admin-bin/ccam.cgi?opt=u&bscale=%s" % value)
+
 
 	def getBGLevel(self):
 		if self.params.has_key("P_BSCALE"):
@@ -210,23 +245,32 @@ class Camera(object):
 		else:
 			return 0			
 
+
 	def setAutoWhiteBalance(self):
 		self.sendHTTPRequest("admin-bin/ccam.cgi?opt=u&bscale=auto&rscale=auto")
 		self.getParamsFromCAM()
 
-	def requestImage(self):
-		self.sendHTTPRequest("admin-bin/ccam.cgi?opt=vhcxym")
-		self.getParamsFromCAM()					
 
+	def setFlipH(self):
+		# not yet
+		return 0
+
+
+	def setFlipV(self):
+		# not yet
+		return 0
+		
 
 	def getSensorState(self):
 		return self.params["SENSOR_STATE"]
+
 
 	def getPhotoFinishState(self):
 		if self.params.has_key("P_PF_HEIGHT"):
 			return int(self.params["P_PF_HEIGHT"]) > 1
 		else:
 			return False
+
 
 	def startPhotofinish(self):
 		self.Photofinish = True
@@ -242,6 +286,7 @@ class Camera(object):
 		time.sleep(1)
 		self.startStream()
 
+
 	def startNormalMode(self):
 		self.Photofinish = False
 		w = self.getWidth()
@@ -255,6 +300,7 @@ class Camera(object):
 			% (w,h,left,top,self.getFPS(), self.getQuality() ) )
 		time.sleep(1)
 		self.startStream()
+
 		
 	def getParamsFromCAM(self):
 		url = "admin-bin/ccam.cgi?html=10" 
@@ -301,7 +347,6 @@ class Camera(object):
 			return False
 
 					
-					
 	def sendHTTPRequest(self, url):		
 		url = "http://%s/%s" % (self.IP, url)
 		req = urllib2.Request(url)
@@ -329,8 +374,10 @@ class Camera(object):
 			return False			
 		else:   	
 			return f.read()
-			
-			
+
+	def requestImage(self):
+		self.sendHTTPRequest("admin-bin/ccam.cgi?opt=vhcxym")
+		self.getParamsFromCAM()			
 
 if __name__ == '__main__':
     cam = Camera()

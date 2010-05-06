@@ -413,7 +413,6 @@ void gl_init()
 	
 	GLenum format = IsBGR(buffer4gl->channelSeq) ? GL_BGR_EXT : GL_RGBA;
 	
-	//printf("setup texture\n");	
 	glGenTextures(1, &imageID);
 	glBindTexture(GL_TEXTURE_2D, imageID);
 	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
@@ -1033,6 +1032,7 @@ int inotify_watch()
 	wd = inotify_add_watch( fd, watch_dir, IN_CLOSE_WRITE );	
 
 	printf("watch directory %s\n",watch_dir);
+	
 	// main loop
 	int done = 0;	
 	while ( !done ) {  
@@ -1286,9 +1286,7 @@ gint main (gint argc, gchar *argv[]) {
 	t_total = (double)cvGetTickCount();
 
 
-	/* run main loop */
-	
-
+	/* run main loop */	
 	if (!flag_watcher_mode) {
 		printf("now running...\n");
 		g_main_loop_run (loop);

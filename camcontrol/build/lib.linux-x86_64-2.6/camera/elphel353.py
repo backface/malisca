@@ -24,7 +24,7 @@ class Camera(object):
 		logging.basicConfig(level=logging.DEBUG)	
 		self.logger = logging.getLogger('Camera Elphel353')	
 
-	# setter functions
+
 	def setFPS(self, value):
 		self.FPS = value
 		if self.trigger == False:
@@ -33,32 +33,29 @@ class Camera(object):
 		else:
 			trig_period = 96000000. / value * 2
 			return self.setParam("TRIG_PERIOD", str(trig_period))	
+
 		
 	def setWidth(self,value):
 		self.setParam("WOI_WIDTH", str(value))
 		return self.setParam("WOI_LEFT", str((self.max_width - value)/2) )
+
 		
 	def setHeight(self,value):
 		self.setParam("WOI_HEIGHT", str(value))
 		return self.setParam("WOI_TOP", str((self.max_height - value)/2) )	
+
 		
 	def setExposure(self,value):
 		return self.setParam("EXPOS", str(value * 1000))
 
+
 	def setGamma(self,value):
 		self.gamma = value
-		#val = 100*value
-		#return self.sendHTTPRequest("setparam.php?"
-		#	+ "GTAB_R__0816=" + str(val) + "&"
-		#	+ "GTAB_G__0816=" + str(val) + "&"
-		#	+ "GTAB_B__0816=" + str(val) + "&"
-		#	+ "GTAB_GB__0816=" + str(val) + "&"
-		#	)
-		#return self.setParam("GAMMA", str(value))
 		return self.sendHTTPRequest("camvc.php?set=0/gam:"
 			+ str(self.gamma)
 			+ "/pxl:" + str(self.blacklevel)
 			+ "/")
+
 
 	def setBlacklevel(self,value):
 		self.blacklevel = value
@@ -66,26 +63,35 @@ class Camera(object):
 			+ str(self.gamma)
 			+ "/pxl:" + str(self.blacklevel)
 			+ "/" )
-		#return self.setParam("GAMMA", str(value))
+
 
 	def setGain(self,value):
 		self.gain = value
-		#gain_R = self.gain * 65536 * self.wb_factor_R
-		#gain_B = self.gain * 65536 * self.wb_factor_G
-		#gain_G = self.gain * 65536 * self.wb_factor_B
-		#gain_GB = self.gain * 65536 * self.wb_factor_GB
-		#return self.sendHTTPRequest("setparam.php?"
-		#	+ "GAINR=" + str(gain_R) + "&"
-		#	+ "GAING=" + str(gain_B) + "&"
-		#	+ "GAINB=" + str(gain_G) + "&"
-		#	+ "GAINGB=" + str(gain_GB))
 		return self.sendHTTPRequest("camvc.php?set=0/gg:"
 			+ str(self.gain)
 			+ "/ggb:" + str(self.gain)
 			+ "/")		
+
+
+	def setSaturationBlue(self, value):
+		return  self.setParam("COLOR_SATURATION_BLUE", str(value))
+
+
+	def setSaturationRed(self, value):
+		return  self.setParam("COLOR_SATURATION_RED", str(value))
+
+
+	def setRGLevel(self, value):
+		return  self.setParam("RSCALE", str(value))
+
+
+	def setBGLevel(self, value):
+		return  self.setParam("BSCALE", str(value))						
+
 		
 	def setQuality(self,value):
 		return  self.setParam("QUALITY", str(value))		
+
 
 	def setTrigger(self, value):
 		if value == True:			
@@ -98,11 +104,13 @@ class Camera(object):
 			self.setFPS(self.getFPS())
 			return ret
 
+
 	def setFlipH(self,value):
 		if value == True:			
 			return self.setParam("FLIPH", "1")
 		else:
 			return self.setParam("FLIPH", "0")
+
 
 	def setFlipV(self,value):
 		if value == True:			
@@ -110,55 +118,43 @@ class Camera(object):
 		else:
 			return self.setParam("FLIPV", "0")			
 
-	
-	# getter functions	
-			
-	def getFPS(self):
-		return int(self.FPS)
-						
-	def getQuality(self):
-		return 0	
-				
-	def getExposure(self):
-		return 0	
-		
-	def getParamsFromCAM(self):
-		return 0
-					
-	def getExposureParamsFromCAM(self):
-		return 0			
 
-		
-	#start stop
-	
 	def setAutoExposureOff(self):
 		return self.setParam("AUTOEXP_ON","0")	
+
 		
 	def setAutoExposureOn(self):
 		return self.setParam("AUTOEXP_ON","1")
 
+
 	def setAutoWhiteBalanceOff(self):
 		return self.setParam("WB_EN","0")	
+
 		
 	def setAutoWhiteBalanceOn(self):
 		return self.setParam("WB_EN","1")		
+
 			
 	def startStream(self):
 		return self.setParam("DAEMON_EN_STREAMER","1")
+
 		
 	def stopStream(self):
 		return self.setParam("DAEMON_EN_STREAMER","0")
 
+
 	def streamMulticast(self):
 		return self.setParam("STROP_MCAST_EN","1")
 
+
 	def streamUnicast(self):
 		return self.setParam("STROP_MCAST_EN","1")			
-		
-	## general method
 
+		
+	## general methods
 	def rebootCam(self):
 		return self.sendHTTPRequest("phpshell.php?command=reboot%20-f")
+
 		
 	def setParam(self, param, value):
 		self.sendHTTPRequest("setparam.php?" + param + "=" + value)
@@ -216,6 +212,7 @@ class Camera(object):
 		else:
 			ret = f.read()
 			return ret
+
 
 if __name__ == '__main__':
     cam = Camera()
