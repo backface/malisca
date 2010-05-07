@@ -11,16 +11,15 @@ class Camera(object):
 		self.img_src = "http://%s:8081/bimg" % self.ip
 		self.video_src = "rtsp://%s:554" % self.ip
 
-		self.params = {}		
-		self.params["SENSOR_WIDTH"] = 2592
-		self.params["SENSOR_HEIGHT"] = 1936
-
+		self.params = {}
+		
 		self.trigger = False
-		self.FPS = 10
 		self.params = {}
 		self.params["GAIN"] = 0
 		self.params["GAMMA"] = 0.54
-		self.params["BLACKLEVEL"] = 10		
+		self.params["BLACKLEVEL"] = 10
+		self.params["SENSOR_WIDTH"] = 2592
+		self.params["SENSOR_HEIGHT"] = 1936		
 				
 		# configure socket timeout
 		timeout = 10
@@ -35,17 +34,19 @@ class Camera(object):
 
 	def setFPS(self, value):
 		self.FPS = value
-		if self.getTrigger() == False:
-			self.setParam("FPSFLAGS", "2")
-			return self.setParam("FP1000SLIM", str(value * 1000))
-		else:
-			trig_period = 96000000. / value * 2
-			return self.setParam("TRIG_PERIOD", str(trig_period))
+		# set trigger
+		trig_period = 96000000. / value * 2
+		self.setParam("TRIG_PERIOD", str(trig_period))
+		
+		self.setParam("FPSFLAGS", "2")
+		return self.setParam("FP1000SLIM", str(value * 1000))
 
+		
 	def getFPS(self):
 		if self.getTrigger():
+			print self.params["TRIG_PERIOD"]
 			if self.params.has_key("TRIG_PERIOD"):
-				return float(self.params["TRIG_PERIOD"]) / (2*96000000.)
+				return (96000000.) / (float(self.params["TRIG_PERIOD"]))
 			else:
 				return 0			
 		else:
@@ -158,7 +159,7 @@ class Camera(object):
 		return int(self.params["QUALITY"])
 
 	def getTrigger(self):
-		return int(self.params["TRIG"]) > 0
+		return (int(self.params["TRIG"]) > 0)
 
 	def setTrigger(self, value):
 		if value == True:						
@@ -179,7 +180,7 @@ class Camera(object):
 			return self.setParam("FLIPH", "0")
 
 	def getFlipH(self):
-		return int(self.params["FLIPH"] > 0)
+		return (int(self.params["FLIPH"]) > 0)
 
 	def setFlipV(self,value):
 		if value == True:			
@@ -188,7 +189,7 @@ class Camera(object):
 			return self.setParam("FLIPV", "0")
 
 	def getFlipV(self):
-		return int(self.params["FLIPV"] > 0)
+		return (int(self.params["FLIPH"]) > 0)
 
 	def setAutoExposureOff(self):
 		return self.setParam("AUTOEXP_ON","0")	
@@ -219,7 +220,7 @@ class Camera(object):
 		return self.setParam("STROP_MCAST_EN","1")
 
 	def streamUnicast(self):
-		return self.setParam("STROP_MCAST_EN","1")			
+		return self.setParam("STROP_MCAST_EN","0")			
 
 	def getMulticastStatus(self):
 		if self.params.has_key("STROP_MCAST_EN"):

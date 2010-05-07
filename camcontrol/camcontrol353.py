@@ -16,6 +16,7 @@ class CamControl:
 		self.controls_active = False		
 		self.state_file = "camcontrol353.state"
 		self.fps_by_trigger = False
+		self.state = {}
 
 		logging.basicConfig(level=logging.DEBUG)	
 		self.logger = logging.getLogger('GUI')		
@@ -35,10 +36,6 @@ class CamControl:
 		
 		#self.load_state();
 				
-		# Set up the gstreamer pipeline	for preview
-		self.movie = self.builder.get_object("movie")
-		self.pipeline = "rtspsrc location=%s latency=100 ! rtpjpegdepay ! jpegdec ! xvimagesink" % self.videosrc	
-
 		# single image preview
 		#self.image = self.builder.get_object("image")
 		#self.update_image()
@@ -48,6 +45,11 @@ class CamControl:
 
 		self.loadParamsFromCam()
 		self.controls_active = True
+
+		# Set up the gstreamer pipeline	for preview
+		self.movie = self.builder.get_object("movie")
+		self.pipeline = ""
+		self.setup_pipeline()
 
 		#353
 		self.builder.get_object("blacklevel").set_value(10)			
@@ -87,6 +89,8 @@ class CamControl:
 			self.builder.get_object("BG_level").set_value(self.cam.getBGLevel())
 			self.builder.get_object("autoexposure").set_active(self.cam.getAutoExposureStatus())
 			self.builder.get_object("multicast").set_active(self.cam.getMulticastStatus())
+			self.builder.get_object("photofinish").set_active(self.cam.getPhotoFinishState())
+			self.builder.get_object("normal").set_active(not self.cam.getPhotoFinishState())
 
 			# elphel 353:
 			self.builder.get_object("trigger").set_active(self.cam.getTrigger())
@@ -96,7 +100,8 @@ class CamControl:
 			if not self.cam.getAutoExposureStatus():
 				self.builder.get_object("exposure").set_flags(gtk.SENSITIVE)
 
-			self.setStreamerLabel()
+			self.setStreamerLabel()		
+		
 
 	def updateParams(self):
 		if self.cam.getParamsFromCAM():
@@ -141,11 +146,32 @@ class CamControl:
 		#self.builder.get_object("height").set_value(height)
 
 	def save_state(self):
-		self.logger.debug("saving state %s", str(self.cam.params))
+		self.state["width"] = self.builder.get_object("width").get_value()
+		self.state["height"] = self.builder.get_object("height").get_value()
+		self.state["fps"] = self.builder.get_object("fps").get_value()
+		self.state["quality"] = self.builder.get_object("quality").get_value()
+		self.state["exposure"] = self.builder.get_object("exposure").get_value()
+		self.state["blacklevel"] = self.builder.get_object("blacklevel").get_value()			
+		self.state["gamma"] = self.builder.get_object("gamma").get_value()
+		self.state["gain"] = self.builder.get_object("gain").get_value()
+		self.state["saturation_red"] = self.builder.get_object("saturation_red").get_value()
+		self.state["saturation_blue"] = self.builder.get_object("saturation_blue").get_value()
+		self.state["RG_level"] = self.builder.get_object("RG_level").get_value()
+		self.state["BG_level"] = self.builder.get_object("BG_level").get_value()
+		self.state["autoexposure"] = self.builder.get_object("autoexposure").get_active()
+		self.state["multicast"] = self.builder.get_object("multicast").get_active()
+		self.state["photofinish"] = self.builder.get_object("photofinish").get_active()
+
+		# elphel 353:
+		self.state["trigger"] = self.builder.get_object("trigger").get_active()
+		self.state["flipH"] = self.builder.get_object("flipH").get_active()
+		self.state["flipV"] = self.builder.get_object("flipV").get_active()
+
+		self.logger.debug("saving state")
 		f = open(self.state_file, 'w')
-		cPickle.dump(self.cam.params,f)
+		cPickle.dump(self.state,f)
 		f.close
-		return True
+		return True		
 		
 	def on_window_delete_event(self, widget, event, data=None):	
 		# If you return FALSE in the "delete_event" signal handler,
@@ -361,7 +387,7 @@ class CamControl:
 			else:
 				self.logger.debug("set streamer on")
 				self.cam.startStream()
-		updateStatus			
+		self.updateStatus()
 
 	## preview functions
 
@@ -378,7 +404,13 @@ class CamControl:
 		self.pixbufLoader.close()	
 		
 		# returning True repeats this timeout callback
-		return True	
+		return True
+
+	def setup_pipeline(self):
+		proto = "protocols=0x00000001"
+		if self.cam.getMulticastStatus:
+			proto = "protocols=0x00000002"
+		self.pipeline = "rtspsrc location=%s latency=100 %s ! rtpjpegdepay ! jpegdec ! xvimagesink" % (self.videosrc, proto)
 		
 	def gst_launch(self):
 		# Set up the gstreamer pipeline
@@ -464,6 +496,10 @@ class CamControl:
 		
 		self.builder.get_object("statusbar").push(0,str);
 
+		self.controls_active = False
+		self.builder.get_object("photofinish").set_active(self.cam.getPhotoFinishState())
+		self.builder.get_object("normal").set_active(not self.cam.getPhotoFinishState())		
+		self.controls_active = True
 		
 	def main(self):
 		gtk.gdk.threads_init()

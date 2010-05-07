@@ -4,9 +4,15 @@ import logging
 import time
 from xml.dom import minidom
 
-class Camera(object):	
+class Camera(object):
+
 	def __init__(self,ip="192.168.0.9"):
-		self.IP = ip
+		self.ip = ip		
+		self.img_src = "http://%s/admin-bin/ccam.cgi?opt=vhcxym" % self.ip
+		self.video_src = "rtsp://%s:554" % self.ip
+		self.max_width = 2048
+		self.max_height = 1536		
+				
 		self.FPS = 0			
 		self.QUALITY = 0
 		self.EXPOSURE = False		
@@ -23,8 +29,8 @@ class Camera(object):
 		timeout = 3
 		socket.setdefaulttimeout(timeout)
 		
-		logging.basicConfig(level=logging.DEBUG)	
-		self.logger = logging.getLogger('Camera Elphel353')
+		logging.basicConfig(level=logging.WARNING)	
+		self.logger = logging.getLogger('Camera Elphel333')
 		
 		self.getParamsFromCAM()
 		self.FPS = self.getFPS()
@@ -348,7 +354,7 @@ class Camera(object):
 
 					
 	def sendHTTPRequest(self, url):		
-		url = "http://%s/%s" % (self.IP, url)
+		url = "http://%s/%s" % (self.ip, url)
 		req = urllib2.Request(url)
 		self.logger.debug("REQUEST: %s" % (url) )	
 		
@@ -359,7 +365,7 @@ class Camera(object):
 			self.logger.warning('Error: %s', e)
 			return False
 		except urllib2.URLError, e:
-			self.logger.warning("We failed to reach a server. %s" % time.strftime("%Y/%m/%d %H:%M:%S"))
+			self.logger.warning("Failed to reach camera %s on %s" % (self.ip, time.strftime("%Y/%m/%d %H:%M:%S")))
 			self.logger.warning("Reason: %s" % e.reason)
 			return False
 		except socket.error, e:
@@ -374,16 +380,16 @@ class Camera(object):
 			return False			
 		else:   	
 			return f.read()
+			
+
+	def rebootCam(self):
+		try:
+			os.system("reboot333")
+		except:
+			self.logger.warning("could not run reboot script.missing?")
 
 	def requestImage(self):
 		self.sendHTTPRequest("admin-bin/ccam.cgi?opt=vhcxym")
 		self.getParamsFromCAM()			
 
-if __name__ == '__main__':
-    cam = Camera()
-    cam.stopStream()
-    cam.getParamsFromCAM()
-    cam.setSize(800,600)
-    cam.startStream()
-    print cam.getSize()
 

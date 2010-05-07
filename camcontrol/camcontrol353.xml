@@ -949,30 +949,26 @@
                   <placeholder/>
                 </child>
                 <child>
-                  <object class="GtkButton" id="normal">
+                  <object class="GtkToggleButton" id="normal">
                     <property name="label" translatable="yes">Normal Mode</property>
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
                     <property name="receives_default">True</property>
-                    <property name="yalign">0</property>
                     <signal name="clicked" handler="on_normal_clicked"/>
                   </object>
                   <packing>
-                    <property name="expand">False</property>
                     <property name="position">2</property>
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkButton" id="photofinish">
-                    <property name="label" translatable="yes">Photofinish</property>
+                  <object class="GtkToggleButton" id="photofinish">
+                    <property name="label" translatable="yes">Photofinish Mode</property>
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
                     <property name="receives_default">True</property>
-                    <property name="yalign">0</property>
                     <signal name="clicked" handler="on_photofinish_clicked"/>
                   </object>
                   <packing>
-                    <property name="expand">False</property>
                     <property name="position">3</property>
                   </packing>
                 </child>
