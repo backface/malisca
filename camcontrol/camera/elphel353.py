@@ -38,7 +38,7 @@ class Camera(object):
 		trig_period = 96000000. / value * 2
 		self.setParam("TRIG_PERIOD", str(trig_period))
 		
-		self.setParam("FPSFLAGS", "2")
+		self.setParam("FPSFLAGS", "1")
 		return self.setParam("FP1000SLIM", str(value * 1000))
 
 		

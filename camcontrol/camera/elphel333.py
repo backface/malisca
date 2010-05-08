@@ -29,7 +29,7 @@ class Camera(object):
 		timeout = 3
 		socket.setdefaulttimeout(timeout)
 		
-		logging.basicConfig(level=logging.WARNING)	
+		logging.basicConfig(level=logging.DEBUG)	
 		self.logger = logging.getLogger('Camera Elphel333')
 		
 		self.getParamsFromCAM()

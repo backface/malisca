@@ -21,7 +21,7 @@ class CamControl:
 		self.state_file = "camcontrol333.state"
 		self.fps_by_trigger = False
 
-		logging.basicConfig(level=logging.WARNING)	
+		logging.basicConfig(level=logging.DEBUG)	
 		self.logger = logging.getLogger('camcontrol GUI')		
 
 		self.builder = gtk.Builder()

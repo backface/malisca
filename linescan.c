@@ -959,16 +959,20 @@ static void process_buffer (GstElement *sink) {
 			
 		fps_time += ((double)cvGetTickCount() - t);			
 		
-		if (framecount % 300 == 0) {
-			fps = (1000.0 / ((fps_time/300)/((double)cvGetTickFrequency()*1000.)));
+		if (framecount % 100 == 0) {
+			fps = (1000.0 / ((fps_time/100)/((double)cvGetTickFrequency()*1000.)));
 			fps_time = 0;
+			if (flag_prescanned)
+				fps *= (double) height / 2.0;			
 		}
 		//prctl(PR_GET_NAME,p_name);
 
 		long time_total = ((long)cvGetTickCount() - t_total)/((long)cvGetTickFrequency()*1000.);
 		int hh = (time_total / 1000) / 3600;
 		int mm = ((time_total / 1000) - hh * 3600 )/ 60;
-		int ss = ((time_total / 1000) - mm * 60) % 60;		
+		int ss = ((time_total / 1000) - mm * 60) % 60;
+
+
 		
 		sprintf(str_info,"[TIME] %02d:%02d:%02d [OUT] %s #%06ld [IN] #%06ld / FPS:%04.2f (%02.2fms) ",
 			hh, mm, ss,
@@ -977,6 +981,7 @@ static void process_buffer (GstElement *sink) {
 			framecount,
 			fps ,			
 			((double)cvGetTickCount() - t)/((double)cvGetTickFrequency()*1000.)	);
+			
 
 		printf("\r-> %s",str_info);
 			
@@ -1118,7 +1123,10 @@ int inotify_watch()
 					}
 
 					printf("   ");
-			
+
+					// delete file
+					if(remove(filename)) printf("Remove Error");
+					
 					t = (double)cvGetTickCount();
 					
 				}			
@@ -1225,7 +1233,7 @@ gint main (gint argc, gchar *argv[]) {
 		g_object_set (G_OBJECT (sink), 
 			"emit-signals", TRUE, 
 			"sync", FALSE, 
-			"max-buffers", 50,
+			"max-buffers", 100,
 			"drop",TRUE,
 			NULL);
 		
