@@ -6,6 +6,7 @@ import urllib
 import gst
 import logging
 import cPickle
+import glib
 
 from camera.elphel353 import Camera
 
@@ -22,7 +23,7 @@ class CamControl:
 		self.logger = logging.getLogger('GUI')		
 		      
 		self.builder = gtk.Builder()
-		self.builder.add_from_file("camcontrol353.xml") 
+		self.loadGUI("camcontrol353.xml")
 		self.builder.connect_signals(self)
         
 		self.window = self.builder.get_object("window")
@@ -53,8 +54,8 @@ class CamControl:
 
 		#353
 		self.builder.get_object("blacklevel").set_value(10)			
-		self.builder.get_object("gamma").set_value(0.47)
-		self.builder.get_object("gain").set_value(4.0)
+		self.builder.get_object("gamma").set_value(0.54)
+		self.builder.get_object("gain").set_value(1.0)
 			
 		self.update_id = gobject.timeout_add(1000, self.updateParams)		
 

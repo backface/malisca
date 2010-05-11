@@ -2,6 +2,11 @@
 
 #a simple startup script, just to show/note some necessary preparations
 
+#stop unwanted services
+sudo service apache2 stop
+sudo service nmbd stop
+sudo service bluetooth stop
+sudo service cups stop
 
 # necessary due to strange bug in gst_init() with LANG=de_AT.UTF-8
 export LANG=C
