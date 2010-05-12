@@ -1,0 +1,4 @@
+
+* White Balance for Elphel 353
+* fix framerate issues for linescan mode / Elphel353 (see mailing list)
+* finally make one gui / main app for all cameras!
