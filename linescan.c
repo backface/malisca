@@ -142,7 +142,7 @@ struct confopt confopt[] = {
 
 // read config file
 void read_config(void) {
-	char line[200];
+	char line[255];
 	char *n, *v;
 	FILE *c;
 	int linenum = 0;
@@ -305,7 +305,7 @@ void gps_process()
 
 void gps_askfordata()
 {
-	if (gps_waiting(gpsdata)){
+	while (gps_waiting(gpsdata)){
 	    gps_poll(gpsdata);
 	    
 	    switch (gpsfix.mode) {
@@ -393,9 +393,10 @@ void gps_log()
 }
 
 
+	
 void gl_init() 
 {
-	//printf("create new image\n");
+	// create bzffer image
 	if (flag_downscale)
 		buffer4gl = cvCreateImage(cvSize(512, 512), 8, 3);
 	else {
@@ -413,6 +414,15 @@ void gl_init()
 	
 	GLenum format = IsBGR(buffer4gl->channelSeq) ? GL_BGR_EXT : GL_RGBA;
 	
+	/* new */
+	glLoadIdentity();
+	glDisable(GL_CULL_FACE);
+	glEnable(GL_BLEND);
+	glEnable(GL_TEXTURE_2D);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	glEnable (GL_DEPTH_TEST);
+	glDepthFunc(GL_LEQUAL);
+	  
 	glGenTextures(1, &imageID);
 	glBindTexture(GL_TEXTURE_2D, imageID);
 	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
@@ -423,7 +433,8 @@ void gl_init()
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA,
 		buffer4gl->width, buffer4gl->height,
-		0, format, GL_UNSIGNED_BYTE, buffer4gl->imageData);		
+		0, format, GL_UNSIGNED_BYTE, buffer4gl->imageData);
+		
 }
 
 void gl_write(float x, float y, char *string) {
@@ -440,7 +451,8 @@ void gl_upload(IplImage *frame)
 {
 	char p_name[16];	
 	prctl(PR_GET_NAME,p_name);	
-	if (flag_verbose) g_print("thread %s: enter upload\n", 	p_name);
+	if (flag_verbose)
+		g_print("thread %s: enter upload\n", 	p_name);
 	
 	double t = (double)cvGetTickCount();
 	//printf("gl_upload frame");
@@ -490,8 +502,7 @@ void gl_upload(IplImage *frame)
 		}	
 		
 	}
-
-	prctl(PR_GET_NAME,p_name);
+	
 	if (flag_verbose) g_print("thread %s: gl upload took %.2fms\n",
 		p_name,
 		( (double)cvGetTickCount() - t ) / 
@@ -552,7 +563,6 @@ void gl_shiftTiles()
 				frame->imageData);
 		}
 	}
-
 	
 	if (flag_verbose) g_print("thread %s: gl tileshift took %.2fms\n",
 		p_name,
@@ -568,15 +578,18 @@ void gl_reshape(int width, int height)
   glLoadIdentity();
   gluOrtho2D(-width,width,-height,height);
   glMatrixMode(GL_MODELVIEW);
-  if (flag_verbose) printf("reshaped\n");
+  if (flag_verbose)
+	printf("reshaped\n");
 }
 
 
 void gl_draw() 
 {
-	char p_name[16];	
+	char p_name[16];
+	
 	prctl(PR_GET_NAME,p_name);	
-	if (flag_verbose) g_print("thread %s: enter draw\n", 	p_name);
+	if (flag_verbose)
+		g_print("thread %s: enter draw\n", 	p_name);
 	
 	double t = (double)cvGetTickCount();
 	IplImage* frame_copy;
@@ -592,23 +605,22 @@ void gl_draw()
 	//if(!flag_prescanned) {
 		pthread_mutex_lock(&frame_mutex);
 		if (frame) {
-			frame_copy =  cvCloneImage(frame);
-			pthread_mutex_unlock(&frame_mutex);			
+			frame_copy =  cvCloneImage(frame);	
 			gl_upload(frame_copy);
 			cvReleaseImage( &frame_copy );
 		}
 		pthread_mutex_unlock(&frame_mutex);
 	//}
-	
+
+	glClearColor(0.0, 0.0, 0.0, 1.0);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);	
 
-	glLoadIdentity();
-        
+	glLoadIdentity();        
     glTranslatef(0.0, 0.0, 0.0);
     glRotatef(90, 0, 0, 1); 
     glRotatef(180, 1, 0, 0);
         
-    glEnable(GL_TEXTURE_2D);
+    //glEnable(GL_TEXTURE_2D);
     
     //double offset = ((2 / (double) tilenr / buf_height) * (double) scanline);
     double offset = 0.0;
@@ -622,8 +634,11 @@ void gl_draw()
     glEnd();
 
 	glRotatef(90, 0, 0, 1);
+
+	glBindTexture(GL_TEXTURE_2D, NULL);	
+	glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
 	
-	glColor4f(1.0, 1.0, 1.0, 1.0);
+	// draw a line
 	if (draw_line > 0) { 
 		glBegin(GL_LINES);
 			glVertex3f(-512, 0.0, 0.0);
@@ -631,11 +646,10 @@ void gl_draw()
 		glEnd();
 	}
 
+	// write teyt
 	gl_write(-508, -520, str_info);
     gl_write(-508,  532, str_gps);
     
-
-	glLoadIdentity();
     glutSwapBuffers();
 
 	if (flag_verbose) g_print("thread %s: draw function took %.2fms\n",
@@ -663,10 +677,11 @@ void *gl_view_thread_func(void *arg) {
 	int argc = 0;
 		
 	prctl(PR_SET_NAME,"LS-DISPLAY",0,0,0);
-	if (flag_verbose) printf("create view thread\n");
+	if (flag_verbose)
+		printf("create view thread\n");
 	
 	glutInit(&argc,&argv);
-	glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGBA | GLUT_DEPTH);
+	glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
 	glutInitWindowPosition(0,0);
 	glutInitWindowSize(512,540);
 	
@@ -679,9 +694,6 @@ void *gl_view_thread_func(void *arg) {
 	glutTimerFunc(40, gl_timer, 0);
 	glutKeyboardUpFunc(on_key_up);
 	glutMainLoop();
-	
-	if (flag_verbose)
-		printf("view thread created\n");
 
 	return 0;
 }
@@ -771,11 +783,13 @@ void write_movie_start(IplImage *frame)
 	imgSize.width = frame->width;
 	imgSize.height = frame->height;
 			
-	if (flag_verbose) printf("Write output to file: %s\n", output_file);
-		writer = cvCreateVideoWriter( 
-			output_file,
-			CV_FOURCC('M','J','P','G'), 100, imgSize, 1);
-			//CV_FOURCC('I', '4', '2', '0'), 100, imgSize, 1);
+	if (flag_verbose)
+		printf("Write output to file: %s\n", output_file);
+
+	writer = cvCreateVideoWriter( 
+		output_file,
+		CV_FOURCC('M','J','P','G'), 100, imgSize, 1);
+		//CV_FOURCC('I', '4', '2', '0'), 100, imgSize, 1);
 }
 
 
@@ -787,7 +801,6 @@ static void process_buffer (GstElement *sink) {
 		char p_name[16];
 				
 		prctl(PR_GET_NAME,p_name);
-		//printf("thread %s: poll for new frame\n", p_name);
 
 		GstElement *appsink = sink;			
 		GstBuffer *buffer = 
@@ -959,20 +972,17 @@ static void process_buffer (GstElement *sink) {
 			
 		fps_time += ((double)cvGetTickCount() - t);			
 		
-		if (framecount % 100 == 0) {
-			fps = (1000.0 / ((fps_time/100)/((double)cvGetTickFrequency()*1000.)));
+		if (framecount % 20 == 0) {
+			fps = (1000.0 / ((fps_time/20)/((double)cvGetTickFrequency()*1000.)));
 			fps_time = 0;
-			if (flag_prescanned)
-				fps *= (double) height / 2.0;			
+			//if (flag_prescanned)
+			//	fps *= (double) height / 2.0;			
 		}
-		//prctl(PR_GET_NAME,p_name);
 
 		long time_total = ((long)cvGetTickCount() - t_total)/((long)cvGetTickFrequency()*1000.);
 		int hh = (time_total / 1000) / 3600;
 		int mm = ((time_total / 1000) - hh * 3600 )/ 60;
 		int ss = ((time_total / 1000) - mm * 60) % 60;
-
-
 		
 		sprintf(str_info,"[TIME] %02d:%02d:%02d [OUT] %s #%06ld [IN] #%06ld / FPS:%04.2f (%02.2fms) ",
 			hh, mm, ss,

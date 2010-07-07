@@ -36,11 +36,11 @@ class Camera(object):
 		self.FPS = value
 		# set trigger
 		trig_period = 96000000. / value * 2
-		self.setParam("TRIG_PERIOD", str(trig_period))
-		
-		self.setParam("FPSFLAGS", "1")
-		return self.setParam("FP1000SLIM", str(value * 1000))
-
+		setfps = str(value * 1000.0)
+		#self.setParam("TRIG_PERIOD", str(trig_period))
+		#self.setParam("FPSFLAGS", "2")
+		#return self.setParam("FP1000SLIM", str(value * 1000))
+		self.sendHTTPRequest("setparams.php?FPSFLAGS=2&framedelay=0&TRIG_PERIOD=%f&FP1000SLIM=%f" %(trig_period, value * 1000))
 		
 	def getFPS(self):
 		if self.getTrigger():
@@ -191,6 +191,22 @@ class Camera(object):
 	def getFlipV(self):
 		return (int(self.params["FLIPH"]) > 0)
 
+
+	def setVirtKeep(self,value):
+		if value == True:			
+			return self.setParam("VIRT_KEEP", "1")
+		else:
+			return self.setParam("VIRT_KEEP", "0")
+			
+	def getVirtKeep(self):
+		return (int(self.params["VIRT_KEEP"]) > 0)			
+
+	def setVirtHeight(self,value):
+		return self.setParam("VIRT_HEIGHT", str(value))		
+
+	def getVirtHeight(self):
+		return int(self.params["VIRT_HEIGHT"])
+		
 	def setAutoExposureOff(self):
 		return self.setParam("AUTOEXP_ON","0")	
 		
@@ -277,6 +293,7 @@ class Camera(object):
 		
 	def setParam(self, param, value):
 		self.sendHTTPRequest("setparams.php?" + param + "=" + value)
+		
 		
 		
 	def getParamsFromCAM(self):

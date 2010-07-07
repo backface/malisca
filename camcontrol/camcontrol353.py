@@ -53,9 +53,9 @@ class CamControl:
 		self.setup_pipeline()
 
 		#353
-		self.builder.get_object("blacklevel").set_value(10)			
-		self.builder.get_object("gamma").set_value(0.54)
-		self.builder.get_object("gain").set_value(1.0)
+		#self.builder.get_object("blacklevel").set_value(10)			
+		#self.builder.get_object("gamma").set_value(0.5)
+		#self.builder.get_object("gain").set_value(1.0)
 			
 		self.update_id = gobject.timeout_add(1000, self.updateParams)		
 
@@ -96,7 +96,9 @@ class CamControl:
 			# elphel 353:
 			self.builder.get_object("trigger").set_active(self.cam.getTrigger())
 			self.builder.get_object("flipH").set_active(self.cam.getFlipH())
-			self.builder.get_object("flipH").set_active(self.cam.getFlipV())			
+			self.builder.get_object("flipH").set_active(self.cam.getFlipV())
+			self.builder.get_object("virt_keep").set_active(self.cam.getVirtKeep())
+			self.builder.get_object("virt_height").set_value(self.cam.getVirtHeight())
 
 			if not self.cam.getAutoExposureStatus():
 				self.builder.get_object("exposure").set_flags(gtk.SENSITIVE)
@@ -256,6 +258,13 @@ class CamControl:
 			self.cam.setBlacklevel(val)
 			self.save_state()		
 
+	def on_virt_height_value_changed(self, obj):
+		if self.controls_active:
+			val = obj.get_value()
+			self.logger.debug("set VIRT_HEIGHT to : %f" % val)
+			self.cam.setVirtHeight(val)
+			self.save_state()
+			
 	def on_gamma_value_changed(self, obj):
 		if self.controls_active:
 			val = obj.get_value()
@@ -360,13 +369,21 @@ class CamControl:
 			self.logger.debug("set flipV to:" + str(obj.get_active()))
 			self.cam.setFlipV(obj.get_active())
 			self.state['flipV'] = obj.get_active()
-			self.save_state()					
+			self.save_state()
+
+	def on_virt_keep_toggled(self, obj):
+		if self.controls_active:
+			self.logger.debug("set virt keep to:" + str(obj.get_active()))
+			self.cam.setVirtKeep(obj.get_active())
+			self.save_state()
 
 	def on_flipH_toggled(self, obj):
 		if self.controls_active:
 			self.logger.debug("set flipH to:" + str(obj.get_active()))
 			self.cam.setFlipH(obj.get_active())
 			self.save_state()
+			
+			
 
 	def on_reboot_clicked(self, obj):
 		if self.controls_active:

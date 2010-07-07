@@ -515,16 +515,7 @@
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkButton" id="white_balance">
-                    <property name="label" translatable="yes">White Balance</property>
-                    <property name="visible">True</property>
-                    <property name="can_focus">True</property>
-                    <property name="receives_default">True</property>
-                    <signal name="clicked" handler="on_white_balance_clicked"/>
-                  </object>
-                  <packing>
-                    <property name="position">4</property>
-                  </packing>
+                  <placeholder/>
                 </child>
                 <child>
                   <object class="GtkCheckButton" id="auto_white_balance">
@@ -776,7 +767,73 @@
                       </packing>
                     </child>
                     <child>
-                      <placeholder/>
+                      <object class="GtkExpander" id="Virtual settings">
+                        <property name="visible">True</property>
+                        <property name="can_focus">True</property>
+                        <child>
+                          <object class="GtkVBox" id="vbox8">
+                            <property name="visible">True</property>
+                            <child>
+                              <object class="GtkCheckButton" id="virt_keep">
+                                <property name="label" translatable="yes">VIRT_KEEP</property>
+                                <property name="visible">True</property>
+                                <property name="can_focus">True</property>
+                                <property name="receives_default">False</property>
+                                <property name="relief">half</property>
+                                <property name="draw_indicator">True</property>
+                                <signal name="toggled" handler="on_virt_keep_toggled"/>
+                              </object>
+                              <packing>
+                                <property name="expand">False</property>
+                                <property name="position">0</property>
+                              </packing>
+                            </child>
+                            <child>
+                              <object class="GtkHBox" id="hbox4">
+                                <property name="visible">True</property>
+                                <property name="border_width">5</property>
+                                <child>
+                                  <object class="GtkLabel" id="label20">
+                                    <property name="visible">True</property>
+                                    <property name="xalign">0</property>
+                                    <property name="yalign">0.89999997615814209</property>
+                                    <property name="label" translatable="yes">VIRT_HEIGHT</property>
+                                  </object>
+                                  <packing>
+                                    <property name="expand">False</property>
+                                    <property name="position">0</property>
+                                  </packing>
+                                </child>
+                                <child>
+                                  <object class="GtkHScale" id="virt_height">
+                                    <property name="visible">True</property>
+                                    <property name="can_focus">True</property>
+                                    <property name="update_policy">discontinuous</property>
+                                    <property name="adjustment">virt_height_adjustment</property>
+                                    <property name="digits">0</property>
+                                    <signal name="value_changed" handler="on_virt_height_value_changed"/>
+                                  </object>
+                                  <packing>
+                                    <property name="position">1</property>
+                                  </packing>
+                                </child>
+                              </object>
+                              <packing>
+                                <property name="position">1</property>
+                              </packing>
+                            </child>
+                          </object>
+                        </child>
+                        <child type="label">
+                          <object class="GtkLabel" id="virtual settings">
+                            <property name="visible">True</property>
+                            <property name="label" translatable="yes">virtual settings</property>
+                          </object>
+                        </child>
+                      </object>
+                      <packing>
+                        <property name="position">2</property>
+                      </packing>
                     </child>
                   </object>
                   <packing>
@@ -1136,5 +1193,13 @@
     <property name="step_increment">0.01</property>
     <property name="page_increment">1</property>
     <property name="page_size">1</property>
+  </object>
+  <object class="GtkAdjustment" id="virt_height_adjustment">
+    <property name="value">11</property>
+    <property name="lower">11</property>
+    <property name="upper">3000</property>
+    <property name="step_increment">1</property>
+    <property name="page_increment">10</property>
+    <property name="page_size">10</property>
   </object>
 </interface>
