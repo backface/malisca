@@ -226,10 +226,26 @@ class Camera(object):
 		self.sendHTTPRequest("whitebalance.php")
 		self.getParamsFromCAM()		
 
-
-	def setColorMode(self,value):
-		self.setParam("COLOR",value)
+	def setColorColor(self):
+		self.setParam("COLOR","1")
 		self.getParamsFromCAM()		
+
+	def setColorMono(self):
+		self.setParam("COLOR","0")
+		self.getParamsFromCAM()		
+
+	def setColorJP46(self):
+		self.setParam("COLOR","2")
+		self.getParamsFromCAM()
+
+	def getColorIsMono(self):
+		return int(self.params["COLOR"]) == 0
+
+	def getColorIsColor(self):
+		return int(self.params["COLOR"]) == 1
+
+	def getColorIsJP4(self):
+		return int(self.params["COLOR"]) == 2		
 						
 	def startStream(self):
 		return self.setParam("DAEMON_EN_STREAMER","1")

@@ -92,6 +92,9 @@ class CamControl:
 			self.builder.get_object("multicast").set_active(self.cam.getMulticastStatus())
 			self.builder.get_object("photofinish").set_active(self.cam.getPhotoFinishState())
 			self.builder.get_object("normal").set_active(not self.cam.getPhotoFinishState())
+			self.builder.get_object("color_mono").set_active(self.cam.getColorIsMono())
+			self.builder.get_object("color_color").set_active(self.cam.getColorIsColor())
+			self.builder.get_object("color_jp4").set_active(self.cam.getColorIsJP4())
 
 			# elphel 353:
 			self.builder.get_object("trigger").set_active(self.cam.getTrigger())
@@ -409,28 +412,30 @@ class CamControl:
 
 	def on_color_color_clicked(self, obj):		
 		if self.controls_active:
-			if self.builder.get_object("color_jp4").get_active():
-				self.cam.setColorMode("2")
-			else:
-				self.cam.setColorMode("1")
-			self.builder.get_object("color_mono").set_active(False)
+			self.cam.setColorColor()			
 		self.updateStatus()
 
 	def on_color_mono_clicked(self, obj):		
 		if self.controls_active:
-			if self.builder.get_object("color_jp4").get_active():
-				self.cam.setColorMode("14")
-			else:
-				self.cam.setColorMode("0")
-			self.builder.get_object("color_color").set_active(False)
+			self.controls_active = False
+			self.builder.get_object("color_jp4").set_active(False)
+			self.builder.get_object("color_color").set_active(False)			
+			self.cam.setColorMono()
+			self.controls_active = True	
 		self.updateStatus()
 
 	def on_color_jp4_clicked(self, obj):		
 		if self.controls_active:
-			if self.builder.get_object("color_color").get_active():
-				self.cam.setColorMode("2")
-			else:
-				self.cam.setColorMode("14")
+				self.controls_active = False
+				if obj.get_active():
+					self.builder.get_object("color_color").set_active(True)
+					self.cam.setColorJP46()
+				else:
+					if self.builder.get_object("color_color").get_active():
+						self.cam.setColorColor()
+					else:
+						self.cam.setColorMono()
+				self.controls_active = True
 		self.updateStatus()		
 
 	## preview functions

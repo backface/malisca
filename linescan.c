@@ -52,6 +52,7 @@ void *font = GLUT_BITMAP_HELVETICA_12;
 GLenum format;
 GLuint texture[2];
 int draw_line = 1;
+int draw_zoom = 0;
 
 #include <sys/inotify.h>
 #define I_EVENT_SIZE  ( sizeof (struct inotify_event) )
@@ -636,7 +637,7 @@ void gl_draw()
 	pthread_mutex_lock(&last_full_frame_mutex);
 	if (last_full_frame) {		
 		gl_upload(last_full_frame);
-		gl_zoom(last_full_frame);		
+		if(draw_zoom) gl_zoom(last_full_frame);		
 		gl_shiftTiles();
 		cvReleaseImage( &last_full_frame );			
 	}
@@ -665,7 +666,8 @@ void gl_draw()
     //double offset = ((2 / (double) tilenr / buf_height) * (double) scanline);
     double offset = 0.0;
     
-    // make a quad
+    // make a quad for the main texture
+    
     glEnable(GL_TEXTURE_2D);
     glBindTexture(GL_TEXTURE_2D, texture[0]);
     glBegin(GL_QUADS);
@@ -674,14 +676,26 @@ void gl_draw()
         glTexCoord2f(1, 1); glVertex3f( 512,  512 - offset, 0);
         glTexCoord2f(0, 1); glVertex3f(-512,  512  - offset, 0);
     glEnd();
+    glDisable(GL_TEXTURE_2D);
 
-    glBindTexture(GL_TEXTURE_2D, texture[1]);
-    glBegin(GL_QUADS);
-        glTexCoord2f(0, 0); glVertex3f(-512, 512 -buf_height , 0.);
-        glTexCoord2f(1, 0); glVertex3f( 512, 512 -buf_height , 0.);
-        glTexCoord2f(1, 1); glVertex3f( 512, 512, 0.);
-        glTexCoord2f(0, 1); glVertex3f(-512, 512, 0.);
-    glEnd();
+	if(draw_zoom)
+	{
+		glEnable(GL_TEXTURE_2D);
+		glBindTexture(GL_TEXTURE_2D, texture[1]);
+		glBegin(GL_QUADS);
+			glTexCoord2f(0, 0); glVertex3f(-512, 512 -buf_height , 0.);
+			glTexCoord2f(1, 0); glVertex3f( 512, 512 -buf_height , 0.);
+			glTexCoord2f(1, 1); glVertex3f( 512, 512, 0.);
+			glTexCoord2f(0, 1); glVertex3f(-512, 512, 0.);
+		glEnd();
+		glDisable(GL_TEXTURE_2D);
+
+		glColor4f(1.0f, 1.0f, 1.0f, 0.5f);
+		glBegin(GL_LINES);		
+			glVertex3f(-512, 512 -buf_height , 0.);
+			glVertex3f( 512, 512 -buf_height , 0.);
+		glEnd();
+	}
 
 	
 	glDisable(GL_TEXTURE_2D);
@@ -690,24 +704,14 @@ void gl_draw()
     glBegin(GL_LINES);
 		glVertex3f(-512,-512 , 0.);
 		glVertex3f(-512, 512 , 0.);
-
-
 		
 		glVertex3f( 512, -512, 0.);
 		glVertex3f( 512, 512, 0.);
-		
-        glVertex3f(-512, 512 -buf_height , 0.);
-        glVertex3f( 512, 512 -buf_height , 0.);
-
-
-
     glEnd();
 
     glRotatef(90, 0, 0, 1);
-	//glBindTexture(GL_TEXTURE_2D, NULL);
 		
-	glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-	
+	glColor4f(1.0f, 1.0f, 1.0f, 1.0f);	
 	// draw a line
 	if (draw_line > 0) { 
 		glBegin(GL_LINES);
@@ -739,7 +743,16 @@ void gl_timer(){
 void on_key_up(unsigned char key, int x, int y) {
 	if (key == 'l') {
 		draw_line = !draw_line;
-	} 
+	}
+	else if (key == '+') {
+		line_height++;
+	}
+	else if (key == '-') {
+		if (line_height > 2) line_height--;
+	}
+	else if (key == 'z') {
+		draw_zoom = !draw_zoom;
+	}	
 }
 	
 
@@ -754,7 +767,7 @@ void *gl_view_thread_func(void *arg) {
 	glutInit(&argc,&argv);
 	glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
 	glutInitWindowPosition(0,0);
-	glutInitWindowSize(512,540);
+	glutInitWindowSize(516,545);
 	
 	if (glutCreateWindow("linescan") == GL_FALSE) exit(1);
 
@@ -930,7 +943,9 @@ static void process_buffer (GstElement *sink) {
 			
 			if(flag_write_movie) {
 				write_movie_frame(last_full_frame);
-			}				
+			}
+
+			line_height = frame->height;
 				
 			pthread_mutex_unlock(&last_full_frame_mutex);			
 
@@ -1055,7 +1070,8 @@ static void process_buffer (GstElement *sink) {
 		int mm = ((time_total / 1000) - hh * 3600 )/ 60;
 		int ss = ((time_total / 1000) - mm * 60) % 60;
 		
-		sprintf(str_info,"[TIME] %02d:%02d:%02d [OUT] %s #%06ld [IN] #%06ld / FPS:%04.2f (%02.2fms) ",
+		sprintf(str_info,"LH=%d | TIME=%02d:%02d:%02d | OUT=%s #%06ld | IN=#%06ld | FPS:%04.2f (%02.2fms) ",
+			line_height,
 			hh, mm, ss,
 			size_str,
 			outframecount,				
@@ -1068,7 +1084,7 @@ static void process_buffer (GstElement *sink) {
 			
 		if (flag_gps) {				
 			if (gpsfix.mode >= MODE_2D) {
-				sprintf(str_gps, "[GPS] %s, LAT: %.4f LON: %.4f ALT: %.0fm SPD: %.1fkm/h DIST: %.3fkm",
+				sprintf(str_gps, "GPS=%s, LAT=%.4f LON=%.4f ALT=%.0fm SPD=%.1fkm/h DIST=%.3fkm",
 					gps_status_str,				
 					gpsfix.latitude,
 					gpsfix.longitude,
@@ -1076,7 +1092,7 @@ static void process_buffer (GstElement *sink) {
 					gpsfix.speed * MPS_TO_KPH,
 					distance / 1000 );
 			} else {
-				sprintf(str_gps, "[GPS] NO FIX");
+				sprintf(str_gps, "GPS=NO FIX");
 			}	
 			//printf("%s",str_gps);
 		}
@@ -1178,7 +1194,7 @@ int inotify_watch()
 					int mm = ((time_total / 1000) - hh * 3600 )/ 60;
 					int ss = ((time_total / 1000) - mm * 60) % 60;		
 		
-					sprintf(str_info,"%02d:%02d:%02d [OUT] %s #%06ld [IN] %s / FPS:%04.2f (%02.2fms) ",
+					sprintf(str_info,"%02d:%02d:%02d [OUT%s #%06ld [IN] %s / FPS:%04.2f (%02.2fms) ",
 						hh, mm, ss,
 						size_str,
 						outframecount,				
