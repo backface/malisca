@@ -50,7 +50,7 @@ GstElement *sink, *pipeline;
 void *font = GLUT_BITMAP_HELVETICA_12;
 //void *font = GLUT_BITMAP_8_BY_13;
 GLenum format;
-GLuint imageID;
+GLuint texture[2];
 int draw_line = 1;
 
 #include <sys/inotify.h>
@@ -79,7 +79,7 @@ char *watch_dir;
 char *watch_src_cmd;
 char *output_dir = "scan-data";
 
-char *gst_pipeline, *gst_input_pipeline;
+char *gst_pipeline, *gst_input_pipeline, *gst_jp4pipeline;
 char str_info[255];
 char str_gps[255];
 char size_str[20];
@@ -101,6 +101,7 @@ int flag_gps = 1;
 int flag_watcher_mode = 0;
 int flag_prescanned=0;
 int flag_downscale=1;
+int flag_jp4 = 0;
 
 double fps;
 double fps_time;
@@ -123,10 +124,12 @@ struct confopt {
 
 struct confopt confopt[] = {
 	{ "verbose", co_bool, { .pc_int = &flag_verbose } },
+	{ "jp4out", co_bool, { .pc_int = &flag_jp4 } },
 	{ "dropframes", co_int, { .pc_int = &flag_dropframes } },
 	{ "bufferheight", co_int, { .pc_int = &buf_height } },
 	{ "lineheight", co_int, { .pc_int = &line_height } },
-	{ "gstpipeline", co_str, { .pc_str = &gst_pipeline } },	
+	{ "gstpipeline", co_str, { .pc_str = &gst_pipeline } },
+	{ "jp4pipeline", co_str, { .pc_str = &gst_jp4pipeline } },	
 	{ "outfile", co_str, { .pc_str = &output_file } },
 	{ "display", co_bool, { .pc_int = &flag_display } },
 	{ "gps", co_bool, { .pc_int = &flag_gps } },
@@ -215,7 +218,7 @@ void read_config(void) {
 	}
 		
 	if (!gst_pipeline) 
-		gst_pipeline = "videotestsrc ! ffmpegcolorspace";
+		gst_pipeline = "videotestsrc ! ffmpegcolorspace";	
 }
 
 void read_options(int argc, char *argv[]) {
@@ -226,6 +229,7 @@ void read_options(int argc, char *argv[]) {
 		{"verbose",		no_argument, &flag_verbose, 1},		
 		{"brief",   	no_argument, &flag_verbose, 0},
 		{"display", 	no_argument, &flag_display, 1},
+		{"jp4", 		no_argument, &flag_jp4, 1},
 		{"watch",	 	no_argument, &flag_watcher_mode, 1},
 		{"nodisplay", 	no_argument, &flag_display, 0},
 		{"pre",			no_argument, &flag_prescanned, 1},
@@ -285,6 +289,7 @@ void read_options(int argc, char *argv[]) {
 				printf(" -b | --bufferheight HEIGHT   height of buffer image [px]\n");
 				printf(" -g | --gps                   log GPS data \n");				
 				printf("      --verbose               be verbose \n");
+				printf("      --jp4                   jp4 mode \n");
 				printf("      --nodisplay             run without preview\n");
 				printf("      --no-downscale             downscale image for preview (Faster!)\n");
 				printf("      --watch                 watcher mode (use intofiy to watch a directory)\n");
@@ -423,8 +428,8 @@ void gl_init()
 	glEnable (GL_DEPTH_TEST);
 	glDepthFunc(GL_LEQUAL);
 	  
-	glGenTextures(1, &imageID);
-	glBindTexture(GL_TEXTURE_2D, imageID);
+	glGenTextures(1, &texture[0]);
+	glBindTexture(GL_TEXTURE_2D, texture[0]);
 	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 	//GL_LINEAR is better looking than GL_NEAREST but seems slower..
 	//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
@@ -433,8 +438,7 @@ void gl_init()
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA,
 		buffer4gl->width, buffer4gl->height,
-		0, format, GL_UNSIGNED_BYTE, buffer4gl->imageData);
-		
+		0, format, GL_UNSIGNED_BYTE, buffer4gl->imageData);		
 }
 
 void gl_write(float x, float y, char *string) {
@@ -463,8 +467,7 @@ void gl_upload(IplImage *frame)
 	else {				
 		int i;
 
-		if (flag_downscale) {
-			
+		if (flag_downscale) {			
 			tilenr = frame->width / frame->height;
 			tile_width = (buffer4gl->width );
 			tile_height = (buffer4gl->height / tilenr);
@@ -479,20 +482,20 @@ void gl_upload(IplImage *frame)
 		
 			GLenum format = IsBGR(buffer4gl->channelSeq) ? GL_BGR_EXT : GL_RGBA;
 		
-			glBindTexture(GL_TEXTURE_2D, imageID);
+			glBindTexture(GL_TEXTURE_2D, texture[0]);
 			glTexSubImage2D(GL_TEXTURE_2D, 0, 
 				0, 0, 
 				buffer4gl->width, buffer4gl->height, 
 				format, GL_UNSIGNED_BYTE, 
 				buffer4gl->imageData); 
 		
-			cvReleaseImage( &tile_tmp );
+			cvReleaseImage( &tile_tmp );			
 
 		} else {		
 		
 			GLenum format = IsBGR(frame->channelSeq) ? GL_BGR_EXT : GL_RGBA;
 		
-			glBindTexture(GL_TEXTURE_2D, imageID);
+			glBindTexture(GL_TEXTURE_2D, texture[0]);
 			glTexSubImage2D(GL_TEXTURE_2D, 0, 
 				0,  (tilenr -1) * tile_height, 
 				frame->width, frame->height, 
@@ -509,6 +512,42 @@ void gl_upload(IplImage *frame)
 		( (double)cvGetTickFrequency()*1000.) 
 	);			
 }
+
+void gl_zoom(IplImage *frame) {
+			GLenum format = IsBGR(frame->channelSeq) ? GL_BGR_EXT : GL_RGBA;
+			
+			if (!texture[1]) {
+				glGenTextures(1, &texture[1]);
+				glBindTexture(GL_TEXTURE_2D, texture[1]);
+				glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+				IplImage* frame_crop = cvCreateImage( cvSize( buffer4gl->width, frame->height), 8, 3 );
+				cvSetImageROI(frame, cvRect( (frame->width - buffer4gl->width)/2, 0, buffer4gl->width, frame->height) );
+				cvResize(frame,frame_crop,0);
+				cvResetImageROI(frame);					
+							
+				glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA,
+					frame_crop->width, frame_crop->height,
+					0, format, GL_UNSIGNED_BYTE, frame_crop->imageData);
+
+				cvReleaseImage( &frame_crop );
+
+			} else {
+				glBindTexture(GL_TEXTURE_2D, texture[1]);				
+				IplImage* frame_crop = cvCreateImage( cvSize( buffer4gl->width, frame->height), 8, 3 );
+				cvSetImageROI(frame, cvRect( (frame->width - buffer4gl->width)/2, 0, buffer4gl->width, frame->height) );
+				cvResize(frame,frame_crop,0);
+				cvResetImageROI(frame);					
+							
+				glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA,
+					frame_crop->width, frame_crop->height,
+					0, format, GL_UNSIGNED_BYTE, frame_crop->imageData);
+
+				cvReleaseImage( &frame_crop );			
+			}		
+}	
 
 void gl_shiftTiles()
 {
@@ -540,7 +579,7 @@ void gl_shiftTiles()
 		} else {
 
 			GLenum format = IsBGR(buffer4gl->channelSeq) ? GL_BGR_EXT : GL_RGBA;		
-			glBindTexture(GL_TEXTURE_2D, imageID);
+			glBindTexture(GL_TEXTURE_2D, texture[0]);
 		
 			for(i = tilenr ; i > 0; i--) {
 				cvReleaseImage(&tilebuffer[i]);
@@ -597,8 +636,9 @@ void gl_draw()
 	pthread_mutex_lock(&last_full_frame_mutex);
 	if (last_full_frame) {		
 		gl_upload(last_full_frame);
-		cvReleaseImage( &last_full_frame );
-		gl_shiftTiles();				
+		gl_zoom(last_full_frame);		
+		gl_shiftTiles();
+		cvReleaseImage( &last_full_frame );			
 	}
 	pthread_mutex_unlock(&last_full_frame_mutex);
 		
@@ -626,6 +666,8 @@ void gl_draw()
     double offset = 0.0;
     
     // make a quad
+    glEnable(GL_TEXTURE_2D);
+    glBindTexture(GL_TEXTURE_2D, texture[0]);
     glBegin(GL_QUADS);
         glTexCoord2f(0, 0); glVertex3f(-512, -512  - offset, 0);
         glTexCoord2f(1, 0); glVertex3f( 512, -512 - offset, 0);
@@ -633,9 +675,37 @@ void gl_draw()
         glTexCoord2f(0, 1); glVertex3f(-512,  512  - offset, 0);
     glEnd();
 
-	glRotatef(90, 0, 0, 1);
+    glBindTexture(GL_TEXTURE_2D, texture[1]);
+    glBegin(GL_QUADS);
+        glTexCoord2f(0, 0); glVertex3f(-512, 512 -buf_height , 0.);
+        glTexCoord2f(1, 0); glVertex3f( 512, 512 -buf_height , 0.);
+        glTexCoord2f(1, 1); glVertex3f( 512, 512, 0.);
+        glTexCoord2f(0, 1); glVertex3f(-512, 512, 0.);
+    glEnd();
 
-	glBindTexture(GL_TEXTURE_2D, NULL);	
+	
+	glDisable(GL_TEXTURE_2D);
+
+	glColor4f(1.0f, 1.0f, 1.0f, 0.5f);
+    glBegin(GL_LINES);
+		glVertex3f(-512,-512 , 0.);
+		glVertex3f(-512, 512 , 0.);
+
+
+		
+		glVertex3f( 512, -512, 0.);
+		glVertex3f( 512, 512, 0.);
+		
+        glVertex3f(-512, 512 -buf_height , 0.);
+        glVertex3f( 512, 512 -buf_height , 0.);
+
+
+
+    glEnd();
+
+    glRotatef(90, 0, 0, 1);
+	//glBindTexture(GL_TEXTURE_2D, NULL);
+		
 	glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
 	
 	// draw a line
@@ -656,7 +726,8 @@ void gl_draw()
 		p_name,
 		( (double)cvGetTickCount() - t ) / 
 		( (double)cvGetTickFrequency()*1000.)
-	);	    
+	);
+
 }
 
 
@@ -1214,9 +1285,29 @@ gint main (gint argc, gchar *argv[]) {
 		curtime = gmtime(&now);
 		char buf[255];
 		strftime(buf, sizeof(buf), "%Y%d%m-%H%M%S.avi", curtime);
-		printf("%s",buf);
 		output_file = buf;
+		strcpy(output_file, buf);
 	}
+
+	char tmpstr[255] = "xx";
+	char tmpout[255] = "yyyy";
+	char tmppl[255] = "yyyy";
+	strcpy(tmpout, output_file);
+	strcpy(tmpstr, gst_jp4pipeline);
+	
+
+	if (flag_jp4) {
+		sprintf(tmppl, "%s", strtok(tmpstr,"OUTFILE"));		
+		char * tmp;
+		tmp = strtok(NULL,"OUTFILE");
+		if (tmp != NULL) {
+			strcat(tmppl, strtok(tmpout,"."));
+			strcat(tmppl, tmp);
+			//printf("%s%s%s\n\n", strtok(tmpstr,"OUTFILE"),output_file, strtok(NULL,"OUTFILE"));
+		}
+		gst_pipeline = tmppl;
+	}	
+		
 
 	// init gps
 	if (flag_gps)

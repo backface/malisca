@@ -225,7 +225,12 @@ class Camera(object):
 	def setAutoWhiteBalance(self):
 		self.sendHTTPRequest("whitebalance.php")
 		self.getParamsFromCAM()		
-			
+
+
+	def setColorMode(self,value):
+		self.setParam("COLOR",value)
+		self.getParamsFromCAM()		
+						
 	def startStream(self):
 		return self.setParam("DAEMON_EN_STREAMER","1")
 		

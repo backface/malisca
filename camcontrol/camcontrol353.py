@@ -407,6 +407,32 @@ class CamControl:
 				self.cam.startStream()
 		self.updateStatus()
 
+	def on_color_color_clicked(self, obj):		
+		if self.controls_active:
+			if self.builder.get_object("color_jp4").get_active():
+				self.cam.setColorMode("2")
+			else:
+				self.cam.setColorMode("1")
+			self.builder.get_object("color_mono").set_active(False)
+		self.updateStatus()
+
+	def on_color_mono_clicked(self, obj):		
+		if self.controls_active:
+			if self.builder.get_object("color_jp4").get_active():
+				self.cam.setColorMode("14")
+			else:
+				self.cam.setColorMode("0")
+			self.builder.get_object("color_color").set_active(False)
+		self.updateStatus()
+
+	def on_color_jp4_clicked(self, obj):		
+		if self.controls_active:
+			if self.builder.get_object("color_color").get_active():
+				self.cam.setColorMode("2")
+			else:
+				self.cam.setColorMode("14")
+		self.updateStatus()		
+
 	## preview functions
 
 	def update_image(self):
