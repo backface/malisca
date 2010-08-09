@@ -19,7 +19,7 @@
 #include "cv.h"
 
 CvVideoWriter *writer;
-IplImage* buffer4gl;
+IplImage* buffer4gl, *flatframe, *darkframe;
 IplImage* tilebuffer[100];
 
 pthread_mutex_t frame_mutex;
@@ -51,8 +51,10 @@ void *font = GLUT_BITMAP_HELVETICA_12;
 //void *font = GLUT_BITMAP_8_BY_13;
 GLenum format;
 GLuint texture[2];
+
 int draw_line = 1;
-int draw_zoom = 0;
+int draw_zoom = 1;
+int draw_grey = 0;
 
 #include <sys/inotify.h>
 #define I_EVENT_SIZE  ( sizeof (struct inotify_event) )
@@ -103,11 +105,12 @@ int flag_watcher_mode = 0;
 int flag_prescanned=0;
 int flag_downscale=1;
 int flag_jp4 = 0;
+int flag_calib = 0;
 
 double fps;
 double fps_time;
 double t, tf, tt, t_total;
-
+char max=0, max_b=0, max_r=0, max_g=0,min_b=0, min_g=0, min_r=0;
 
 // structures for config file
 struct confopt {
@@ -126,6 +129,7 @@ struct confopt {
 struct confopt confopt[] = {
 	{ "verbose", co_bool, { .pc_int = &flag_verbose } },
 	{ "jp4out", co_bool, { .pc_int = &flag_jp4 } },
+	{ "calib", co_bool, { .pc_int = &flag_calib } },
 	{ "dropframes", co_int, { .pc_int = &flag_dropframes } },
 	{ "bufferheight", co_int, { .pc_int = &buf_height } },
 	{ "lineheight", co_int, { .pc_int = &line_height } },
@@ -230,6 +234,7 @@ void read_options(int argc, char *argv[]) {
 		{"verbose",		no_argument, &flag_verbose, 1},		
 		{"brief",   	no_argument, &flag_verbose, 0},
 		{"display", 	no_argument, &flag_display, 1},
+		{"calib", 		no_argument, &flag_calib, 1},
 		{"jp4", 		no_argument, &flag_jp4, 1},
 		{"watch",	 	no_argument, &flag_watcher_mode, 1},
 		{"nodisplay", 	no_argument, &flag_display, 0},
@@ -661,13 +666,11 @@ void gl_draw()
     glRotatef(90, 0, 0, 1); 
     glRotatef(180, 1, 0, 0);
         
-    //glEnable(GL_TEXTURE_2D);
     
     //double offset = ((2 / (double) tilenr / buf_height) * (double) scanline);
     double offset = 0.0;
     
-    // make a quad for the main texture
-    
+    // make a quad for the main texture    
     glEnable(GL_TEXTURE_2D);
     glBindTexture(GL_TEXTURE_2D, texture[0]);
     glBegin(GL_QUADS);
@@ -678,6 +681,7 @@ void gl_draw()
     glEnd();
     glDisable(GL_TEXTURE_2D);
 
+	// draw zoom in current tile
 	if(draw_zoom)
 	{
 		glEnable(GL_TEXTURE_2D);
@@ -700,6 +704,7 @@ void gl_draw()
 	
 	glDisable(GL_TEXTURE_2D);
 
+	// draw surrounding lines
 	glColor4f(1.0f, 1.0f, 1.0f, 0.5f);
     glBegin(GL_LINES);
 		glVertex3f(-512,-512 , 0.);
@@ -709,10 +714,11 @@ void gl_draw()
 		glVertex3f( 512, 512, 0.);
     glEnd();
 
+
     glRotatef(90, 0, 0, 1);
-		
-	glColor4f(1.0f, 1.0f, 1.0f, 1.0f);	
-	// draw a line
+
+	// draw a line	
+	glColor4f(1.0f, 1.0f, 1.0f, 1.0f);		
 	if (draw_line > 0) { 
 		glBegin(GL_LINES);
 			glVertex3f(-512, 0.0, 0.0);
@@ -720,7 +726,20 @@ void gl_draw()
 		glEnd();
 	}
 
-	// write teyt
+	// draw zoom in current tile
+	if(draw_grey)
+	{
+		glColor4f(.5f, .5f, .5f, 1.0f);
+		glBegin(GL_QUADS);
+			glTexCoord2f(0, 0); glVertex3f(0. , -512 , 0.);
+			glTexCoord2f(1, 0); glVertex3f(0. +buf_height, -512 , 0.);
+			glTexCoord2f(1, 1); glVertex3f(0. +buf_height, 512, 0.);
+			glTexCoord2f(0, 1); glVertex3f(0. , 512, 0.);
+		glEnd();
+		glDisable(GL_TEXTURE_2D);
+	}	
+
+	// write text info
 	gl_write(-508, -520, str_info);
     gl_write(-508,  532, str_gps);
     
@@ -753,6 +772,12 @@ void on_key_up(unsigned char key, int x, int y) {
 	else if (key == 'z') {
 		draw_zoom = !draw_zoom;
 	}	
+	else if (key == 'g') {
+		draw_grey = !draw_grey;
+	}
+	else if (key == 'c') {
+		flag_calib = !flag_calib;
+	}		
 }
 	
 
@@ -932,6 +957,42 @@ static void process_buffer (GstElement *sink) {
 				printf("error: NO BUFFER DATA\n");					
 			else
 				last_full_frame->imageData = GST_BUFFER_DATA(buffer);
+
+			if (flag_calib) {
+				IplImage* tmpimg;
+
+				// substract darframe
+				//cvSub(last_full_frame,darkframe,last_full_frame,NULL);
+
+				
+				tmpimg = cvCloneImage(last_full_frame);
+				
+				
+				cvSub(last_full_frame,darkframe,last_full_frame,NULL);
+				
+				//cvDiv(tmpimg, flatframe, last_full_frame, 255);	
+				for(i = 0; i < last_full_frame->height; i++) {
+					for(x = 0; x < last_full_frame->width; x++) {
+						//printf("%d",(flatframe->imageData + i * flatframe->widthStep)[x * flatframe->nChannels + 1] );
+						//printf(" %d",(last_full_frame->imageData + i * last_full_frame->widthStep)[x * last_full_frame->nChannels + 1] );
+						
+						if ((flatframe->imageData + i * flatframe->widthStep)[x * flatframe->nChannels + 0] != 0)
+							((uchar *)(last_full_frame->imageData + i * last_full_frame->widthStep))[x * last_full_frame->nChannels + 0] *=
+							max_b/ ((uchar *)(flatframe->imageData + i * flatframe->widthStep))[x * flatframe->nChannels + 0];					
+							
+						if ((flatframe->imageData + i * flatframe->widthStep)[x * flatframe->nChannels + 1] != 0)
+							((uchar *)(last_full_frame->imageData + i * last_full_frame->widthStep))[x * last_full_frame->nChannels + 1] *=
+							max_g/ ((uchar *)(flatframe->imageData + i * flatframe->widthStep))[x * flatframe->nChannels + 1];
+
+						if ((flatframe->imageData + i * flatframe->widthStep)[x * flatframe->nChannels + 2] != 0)
+							((uchar *)(last_full_frame->imageData + i * last_full_frame->widthStep))[x * last_full_frame->nChannels + 2] *=
+							max_r/ ((uchar *)(flatframe->imageData + i * flatframe->widthStep))[x * flatframe->nChannels + 2];
+					}	
+				}
+
+				
+			
+			}
 
 			if ( (!writer || frame->width != width) && flag_write_movie) {
 				write_movie_start(frame);						
@@ -1385,6 +1446,55 @@ gint main (gint argc, gchar *argv[]) {
 		printf("GStreamer: pipline playing.\n");
 	}
 
+	if (flag_calib) {
+		flatframe = cvLoadImage("calibration/flatframe.jpg", 3);
+		darkframe = cvLoadImage("calibration/darkframe.jpg", 3);
+		if (!flatframe) {
+			printf("Could not load darkframe.jpg");
+			exit(1);
+		}			
+		if (flatframe) {
+			IplImage *flat_normalized = cvCreateImage ( cvSize(flatframe->width,flatframe->height), IPL_DEPTH_8U, 1) ;
+			int i, x;
+			
+			for(i = 0; i < flatframe->height; i++) {
+
+				for(x = 0; x < flatframe->width; x++) {
+					if ((flatframe->imageData + i * flatframe->widthStep)[x * flatframe->nChannels + 0] > max_b)
+						max_b = (flatframe->imageData + i * flatframe->widthStep)[x * flatframe->nChannels + 0];
+
+					if ((flatframe->imageData + i * flatframe->widthStep)[x * flatframe->nChannels + 1] > max_g)
+						max_g = (flatframe->imageData + i * flatframe->widthStep)[x * flatframe->nChannels + 1];
+
+					if ((flatframe->imageData + i * flatframe->widthStep)[x * flatframe->nChannels + 2] > max_r)
+						max_r = (flatframe->imageData + i * flatframe->widthStep)[x * flatframe->nChannels + 2];																		
+
+					if ((flatframe->imageData + i * flatframe->widthStep)[x * flatframe->nChannels + 0] > max)
+						max = (flatframe->imageData + i * flatframe->widthStep)[x * flatframe->nChannels + 0];
+
+					if ((flatframe->imageData + i * flatframe->widthStep)[x * flatframe->nChannels + 1] > max)
+						max = (flatframe->imageData + i * flatframe->widthStep)[x * flatframe->nChannels + 1];
+
+					if ((flatframe->imageData + i * flatframe->widthStep)[x * flatframe->nChannels + 2] > max)
+						max = (flatframe->imageData + i * flatframe->widthStep)[x * flatframe->nChannels + 2];																		
+				}				
+			}
+			for(i = 0; i < flatframe->height; i++) {
+				for(x = 0; x < flatframe->width; x++) {
+					((uchar *)(flatframe->imageData + i * flatframe->widthStep))[x * flatframe->nChannels + 0] *= 255/max_b;
+					((uchar *)(flatframe->imageData + i * flatframe->widthStep))[x * flatframe->nChannels + 1] *= 255/max_g;
+					((uchar *)(flatframe->imageData + i * flatframe->widthStep))[x * flatframe->nChannels + 2] *= 255/max_r;
+				}	
+			}
+			//cvSub(flatframe,darkframe,flatframe,NULL);		
+		}
+		else {
+			printf("Could not load flatframe.jpg");
+			exit(1);
+		}
+		
+	}	
+
 	// init viewer thread
 	if (flag_display) {		
 		view_thread_id = pthread_mutex_init(&frame_mutex, NULL);
@@ -1405,6 +1515,7 @@ gint main (gint argc, gchar *argv[]) {
 			exit(EXIT_FAILURE);
 		}		
 	}		
+
 	
 	// start tickers
 	t = (double)cvGetTickCount();
