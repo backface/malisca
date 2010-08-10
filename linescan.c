@@ -903,6 +903,112 @@ void write_movie_start(IplImage *frame)
 		//CV_FOURCC('I', '4', '2', '0'), 100, imgSize, 1);
 }
 
+void calibration_apply(IplImage *image)
+{
+	IplImage* tmpimg;
+	tmpimg = cvCloneImage(image);
+
+	// substract darframe	
+	if (darkframe) {
+		if (darkframe->height != image->height || darkframe->width != image->width) {
+			printf("darkframe has wrong image size! Do not apply calibration images!\n");
+			flag_calib = 0;
+		}
+		else
+			cvSub(image, darkframe, image,NULL);
+	}
+
+	// divide by flatframe
+	if (flatframe) {
+		if (flatframe->height != image->height || flatframe->width != image->width) {
+			printf("flatframe has wrong image size! Do not apply calibration images!\n");
+			flag_calib = 0;
+		}
+		else		
+			cvDiv(tmpimg, flatframe, image, 150);
+	}
+
+	/*
+	for(i = 0; i < last_full_frame->height; i++) {
+		for(x = 0; x < last_full_frame->width; x++) {
+			//printf("%d",(flatframe->imageData + i * flatframe->widthStep)[x * flatframe->nChannels + 1] );
+			//printf(" %d",(last_full_frame->imageData + i * last_full_frame->widthStep)[x * last_full_frame->nChannels + 1] );
+						
+			if ((flatframe->imageData + i * flatframe->widthStep)[x * flatframe->nChannels + 0] != 0)
+				((uchar *)(last_full_frame->imageData + i * last_full_frame->widthStep))[x * last_full_frame->nChannels + 0] *=
+					255/ ((uchar *)(flatframe->imageData + i * flatframe->widthStep))[x * flatframe->nChannels + 0];					
+							
+			if ((flatframe->imageData + i * flatframe->widthStep)[x * flatframe->nChannels + 1] != 0)
+				((uchar *)(last_full_frame->imageData + i * last_full_frame->widthStep))[x * last_full_frame->nChannels + 1] *=
+					255/ ((uchar*)(flatframe->imageData + i * flatframe->widthStep))[x * flatframe->nChannels + 1];
+
+			if ((flatframe->imageData + i * flatframe->widthStep)[x * flatframe->nChannels + 2] != 0)
+				((uchar *)(last_full_frame->imageData + i * last_full_frame->widthStep))[x * last_full_frame->nChannels + 2] *=
+					255/ ((uchar *)(flatframe->imageData + i * flatframe->widthStep))[x * flatframe->nChannels + 2];
+		}	
+	}
+	*/
+}
+
+void calibration_loadimages()
+{
+	// load darkframe
+	darkframe = cvLoadImage("calibration/darkframe.jpg", 3);	
+	if (!darkframe) {
+		printf("Could not load darkframe.jpg");
+		exit(1);
+	}			
+
+	flatframe = cvLoadImage("calibration/flatframe.jpg", 3);
+
+	// load flatframe
+	if (!flatframe) {
+		printf("Could not load flatframe.jpg");
+		exit(1);
+	} else {
+		IplImage *flat_normalized = cvCreateImage ( cvSize(flatframe->width,flatframe->height), IPL_DEPTH_8U, 1) ;
+		int i, x;
+
+		// find maxima
+		for(i = 0; i < flatframe->height; i++) {
+			for(x = 0; x < flatframe->width; x++) {
+				if ((flatframe->imageData + i * flatframe->widthStep)[x * flatframe->nChannels + 0] > max_b)
+					max_b = (flatframe->imageData + i * flatframe->widthStep)[x * flatframe->nChannels + 0];
+
+				if ((flatframe->imageData + i * flatframe->widthStep)[x * flatframe->nChannels + 1] > max_g)
+					max_g = (flatframe->imageData + i * flatframe->widthStep)[x * flatframe->nChannels + 1];
+
+				if ((flatframe->imageData + i * flatframe->widthStep)[x * flatframe->nChannels + 2] > max_r)
+					max_r = (flatframe->imageData + i * flatframe->widthStep)[x * flatframe->nChannels + 2];																		
+
+				if ((flatframe->imageData + i * flatframe->widthStep)[x * flatframe->nChannels + 0] > max)
+					max = (flatframe->imageData + i * flatframe->widthStep)[x * flatframe->nChannels + 0];
+
+				if ((flatframe->imageData + i * flatframe->widthStep)[x * flatframe->nChannels + 1] > max)
+					max = (flatframe->imageData + i * flatframe->widthStep)[x * flatframe->nChannels + 1];
+
+				if ((flatframe->imageData + i * flatframe->widthStep)[x * flatframe->nChannels + 2] > max)
+					max = (flatframe->imageData + i * flatframe->widthStep)[x * flatframe->nChannels + 2];																		
+			}				
+		}
+
+		// normalize
+		
+		for(i = 0; i < flatframe->height; i++) {
+			for(x = 0; x < flatframe->width; x++) {
+
+				((uchar *)(flatframe->imageData + i * flatframe->widthStep))[x * flatframe->nChannels + 0] *= 255 /max_g;
+				((uchar *)(flatframe->imageData + i * flatframe->widthStep))[x * flatframe->nChannels + 1] *= 255 /max_g;
+				((uchar *)(flatframe->imageData + i * flatframe->widthStep))[x * flatframe->nChannels + 2] *= 255 /max_r;
+
+			}	
+		}
+
+		//cvShowImage("wind",flatframe);
+		//cvSub(flatframe,darkframe,flatframe,NULL);		
+	}	
+}
+
 
 
 static void process_buffer (GstElement *sink) {		
@@ -961,40 +1067,7 @@ static void process_buffer (GstElement *sink) {
 				last_full_frame->imageData = GST_BUFFER_DATA(buffer);
 
 			if (flag_calib) {
-				IplImage* tmpimg;
-
-				// substract darframe
-				//cvSub(last_full_frame,darkframe,last_full_frame,NULL);
-
-				
-				tmpimg = cvCloneImage(last_full_frame);
-				
-				
-				cvSub(last_full_frame,darkframe,last_full_frame,NULL);
-				
-				cvDiv(tmpimg, flatframe, last_full_frame, 150);	
-
-				/*for(i = 0; i < last_full_frame->height; i++) {
-					for(x = 0; x < last_full_frame->width; x++) {
-						//printf("%d",(flatframe->imageData + i * flatframe->widthStep)[x * flatframe->nChannels + 1] );
-						//printf(" %d",(last_full_frame->imageData + i * last_full_frame->widthStep)[x * last_full_frame->nChannels + 1] );
-						
-						if ((flatframe->imageData + i * flatframe->widthStep)[x * flatframe->nChannels + 0] != 0)
-							((uchar *)(last_full_frame->imageData + i * last_full_frame->widthStep))[x * last_full_frame->nChannels + 0] *=
-							255/ ((uchar *)(flatframe->imageData + i * flatframe->widthStep))[x * flatframe->nChannels + 0];					
-							
-						if ((flatframe->imageData + i * flatframe->widthStep)[x * flatframe->nChannels + 1] != 0)
-							((uchar *)(last_full_frame->imageData + i * last_full_frame->widthStep))[x * last_full_frame->nChannels + 1] *=
-							255/ ((uchar*)(flatframe->imageData + i * flatframe->widthStep))[x * flatframe->nChannels + 1];
-
-						if ((flatframe->imageData + i * flatframe->widthStep)[x * flatframe->nChannels + 2] != 0)
-							((uchar *)(last_full_frame->imageData + i * last_full_frame->widthStep))[x * last_full_frame->nChannels + 2] *=
-							255/ ((uchar *)(flatframe->imageData + i * flatframe->widthStep))[x * flatframe->nChannels + 2];
-					}	
-				}*/
-
-				
-			
+				calibration_apply(last_full_frame);
 			}
 
 			if ( (!writer || frame->width != width) && flag_write_movie) {
@@ -1025,6 +1098,10 @@ static void process_buffer (GstElement *sink) {
 				frame = cvCreateImage(cvSize(width, buf_height), IPL_DEPTH_8U, 3);
 				clear_frame(frame);					
 			}
+
+			if (flag_calib) {
+				calibration_apply(frame);
+			}			
 		
 			if ( (!writer || frame->width != width) && flag_write_movie) {
 				write_movie_start(frame);						
@@ -1229,6 +1306,9 @@ int inotify_watch()
 						frame = cvCloneImage(last_full_frame);
 						clear_frame(frame);
 					}
+
+					if (flag_calib)
+						calibration_apply(last_full_frame);
 
 					if ( (!writer) && flag_write_movie) {
 						write_movie_start(last_full_frame);
@@ -1451,56 +1531,7 @@ gint main (gint argc, gchar *argv[]) {
 	}
 
 	if (flag_calib) {
-		flatframe = cvLoadImage("calibration/flatframe.jpg", 3);
-		darkframe = cvLoadImage("calibration/darkframe.jpg", 3);
-		if (!flatframe) {
-			printf("Could not load darkframe.jpg");
-			exit(1);
-		}			
-		if (flatframe) {
-			IplImage *flat_normalized = cvCreateImage ( cvSize(flatframe->width,flatframe->height), IPL_DEPTH_8U, 1) ;
-			int i, x;
-			
-			for(i = 0; i < flatframe->height; i++) {
-
-				for(x = 0; x < flatframe->width; x++) {
-					if ((flatframe->imageData + i * flatframe->widthStep)[x * flatframe->nChannels + 0] > max_b)
-						max_b = (flatframe->imageData + i * flatframe->widthStep)[x * flatframe->nChannels + 0];
-
-					if ((flatframe->imageData + i * flatframe->widthStep)[x * flatframe->nChannels + 1] > max_g)
-						max_g = (flatframe->imageData + i * flatframe->widthStep)[x * flatframe->nChannels + 1];
-
-					if ((flatframe->imageData + i * flatframe->widthStep)[x * flatframe->nChannels + 2] > max_r)
-						max_r = (flatframe->imageData + i * flatframe->widthStep)[x * flatframe->nChannels + 2];																		
-
-					if ((flatframe->imageData + i * flatframe->widthStep)[x * flatframe->nChannels + 0] > max)
-						max = (flatframe->imageData + i * flatframe->widthStep)[x * flatframe->nChannels + 0];
-
-					if ((flatframe->imageData + i * flatframe->widthStep)[x * flatframe->nChannels + 1] > max)
-						max = (flatframe->imageData + i * flatframe->widthStep)[x * flatframe->nChannels + 1];
-
-					if ((flatframe->imageData + i * flatframe->widthStep)[x * flatframe->nChannels + 2] > max)
-						max = (flatframe->imageData + i * flatframe->widthStep)[x * flatframe->nChannels + 2];																		
-				}				
-			}
-			for(i = 0; i < flatframe->height; i++) {
-				for(x = 0; x < flatframe->width; x++) {
-
-					((uchar *)(flatframe->imageData + i * flatframe->widthStep))[x * flatframe->nChannels + 0] *= 255 /max_g;
-					((uchar *)(flatframe->imageData + i * flatframe->widthStep))[x * flatframe->nChannels + 1] *= 255 /max_g;
-					((uchar *)(flatframe->imageData + i * flatframe->widthStep))[x * flatframe->nChannels + 2] *= 255 /max_r;
-
-				}	
-			}
-
-			cvShowImage("wind",flatframe);
-			//cvSub(flatframe,darkframe,flatframe,NULL);		
-		}
-		else {
-			printf("Could not load flatframe.jpg");
-			exit(1);
-		}
-		
+		calibration_loadimages();		
 	}	
 
 	// init viewer thread
