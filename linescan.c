@@ -970,25 +970,26 @@ static void process_buffer (GstElement *sink) {
 				
 				cvSub(last_full_frame,darkframe,last_full_frame,NULL);
 				
-				//cvDiv(tmpimg, flatframe, last_full_frame, 255);	
-				for(i = 0; i < last_full_frame->height; i++) {
+				cvDiv(tmpimg, flatframe, last_full_frame, 150);	
+
+				/*for(i = 0; i < last_full_frame->height; i++) {
 					for(x = 0; x < last_full_frame->width; x++) {
 						//printf("%d",(flatframe->imageData + i * flatframe->widthStep)[x * flatframe->nChannels + 1] );
 						//printf(" %d",(last_full_frame->imageData + i * last_full_frame->widthStep)[x * last_full_frame->nChannels + 1] );
 						
 						if ((flatframe->imageData + i * flatframe->widthStep)[x * flatframe->nChannels + 0] != 0)
 							((uchar *)(last_full_frame->imageData + i * last_full_frame->widthStep))[x * last_full_frame->nChannels + 0] *=
-							max_b/ ((uchar *)(flatframe->imageData + i * flatframe->widthStep))[x * flatframe->nChannels + 0];					
+							255/ ((uchar *)(flatframe->imageData + i * flatframe->widthStep))[x * flatframe->nChannels + 0];					
 							
 						if ((flatframe->imageData + i * flatframe->widthStep)[x * flatframe->nChannels + 1] != 0)
 							((uchar *)(last_full_frame->imageData + i * last_full_frame->widthStep))[x * last_full_frame->nChannels + 1] *=
-							max_g/ ((uchar *)(flatframe->imageData + i * flatframe->widthStep))[x * flatframe->nChannels + 1];
+							255/ ((uchar*)(flatframe->imageData + i * flatframe->widthStep))[x * flatframe->nChannels + 1];
 
 						if ((flatframe->imageData + i * flatframe->widthStep)[x * flatframe->nChannels + 2] != 0)
 							((uchar *)(last_full_frame->imageData + i * last_full_frame->widthStep))[x * last_full_frame->nChannels + 2] *=
-							max_r/ ((uchar *)(flatframe->imageData + i * flatframe->widthStep))[x * flatframe->nChannels + 2];
+							255/ ((uchar *)(flatframe->imageData + i * flatframe->widthStep))[x * flatframe->nChannels + 2];
 					}	
-				}
+				}*/
 
 				
 			
@@ -1220,6 +1221,7 @@ int inotify_watch()
 					
 					pthread_mutex_lock(&last_full_frame_mutex);
 					last_full_frame = cvLoadImage(filename, 1);
+					buf_height = last_full_frame->height;
 
 					if (!frame) {
 						frame = cvCloneImage(last_full_frame);
@@ -1481,11 +1483,15 @@ gint main (gint argc, gchar *argv[]) {
 			}
 			for(i = 0; i < flatframe->height; i++) {
 				for(x = 0; x < flatframe->width; x++) {
-					((uchar *)(flatframe->imageData + i * flatframe->widthStep))[x * flatframe->nChannels + 0] *= 255/max_b;
-					((uchar *)(flatframe->imageData + i * flatframe->widthStep))[x * flatframe->nChannels + 1] *= 255/max_g;
-					((uchar *)(flatframe->imageData + i * flatframe->widthStep))[x * flatframe->nChannels + 2] *= 255/max_r;
+
+					((uchar *)(flatframe->imageData + i * flatframe->widthStep))[x * flatframe->nChannels + 0] *= 255 /max_g;
+					((uchar *)(flatframe->imageData + i * flatframe->widthStep))[x * flatframe->nChannels + 1] *= 255 /max_g;
+					((uchar *)(flatframe->imageData + i * flatframe->widthStep))[x * flatframe->nChannels + 2] *= 255 /max_r;
+
 				}	
 			}
+
+			cvShowImage("wind",flatframe);
 			//cvSub(flatframe,darkframe,flatframe,NULL);		
 		}
 		else {

@@ -25,6 +25,10 @@ else
 	echo "gpsd is running"
 fi
 
+./scripts/init-cam.sh
+
 # now run linescanner
-./linescan --gps
+while [ 1 == 1 ]; do
+	./linescan --pre --gps
+done
 
