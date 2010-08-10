@@ -297,12 +297,14 @@ void read_options(int argc, char *argv[]) {
 				printf("      --verbose               be verbose \n");
 				printf("      --jp4                   jp4 mode \n");
 				printf("      --nodisplay             run without preview\n");
-				printf("      --no-downscale             downscale image for preview (Faster!)\n");
+				printf("      --no-downscale(NOT YET) no downscale image for preview (slower and BROKEN!)\n");
+				printf("      --calib (NOT YET!)      Use calibration (darkframe substraction and flatframe)\n");
 				printf("      --watch                 watcher mode (use intofiy to watch a directory)\n");
 				printf(" -i | --watch-dir             directory to watch\n");
 				printf("      --watch-src-cmd         command to launch for watching mode\n");
 				printf("      --pre                   source is already line-scanned\n");
 				printf(" -h | --help                  print this help\n");
+				printf("      --no-downscale          downscale image for preview (Faster but broken!)\n");
 				exit(0);				
 		}
 	}	
