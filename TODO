@@ -5,18 +5,17 @@ known issues:
 * need "export LANG=C" for gps data to be correctly
 
 todo:
-* data log preview (why is it not white?)
-* cleanup
-* downscale mode: write full frames to gl buffer.
-* enable zoom & fullscreen for "no-downscale" mode
+* calibration process (black and flatframe)
+* post-processing tools
+* downscale mode: write full frames to gl buffer.?
+* enable zoom & fullscreen for "no-downscale" mode?
 * drop-frame option
-* short-cuts (line-height, drop,...)
 * integrate camcontrols into linescanner?
+* JP4: debayer in GPU?
 
 further away:
 * add sound recording
 * multi-camera support
-* post-processing tools
 
 camcontrols:
 * read params from config or from camera?
@@ -24,6 +23,6 @@ camcontrols:
 * load/save settings
 
 camcontrol353.py:
-* white balance!
-* photofinish mode
-* cleanup
+* preview
+* jp4 mode
+* remote control for camogm
