@@ -75,9 +75,9 @@ void loop()
     Serial.print("\n");
     digitalWrite(ledpin, HIGH);
   }
-  
-  
-  digitalWrite(ledpin, LOW);
+  else {  
+	digitalWrite(ledpin, LOW);
+  }
 
 }
 
