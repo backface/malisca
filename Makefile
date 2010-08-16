@@ -16,6 +16,8 @@ all: $(TARGETS)
 %:%.c
 	$(CC) $(LINUXCFLAGS) $(OPENCV_FLAGS) $(OPENCV_FLAGS) $(GSTREAMER_FLAGS) $(GL_FLAGS)  $@.c -o $@
 	
+install:
+	cp linescan /usr/local/bin
 	
 clean:
 	rm $(TARGETS)

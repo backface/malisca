@@ -28,7 +28,11 @@ fi
 ./scripts/init-cam.sh
 
 # now run linescanner
+
+
 while [ 1 == 1 ]; do
+	wget -q -O /dev/null http://192.168.0.10/camogmgui/camogm_interface.php?cmd=start
 	./linescan --pre --gps
+	wget -q -O /dev/null http://192.168.0.10/camogmgui/camogm_interface.php?cmd=stop
 done
 

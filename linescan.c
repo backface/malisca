@@ -1,4 +1,4 @@
-/* 
+	/* 
  MALISCA linescanner
  with realtime preview 
  Michael Aschauer <m@ash.to>
@@ -76,13 +76,15 @@ FILE *gpslog_file;
 double distance=0;
 
 
-char *conffile = "./linescan.conf";
+char *conffile = "linescan.conf";
 char *output_file;
 char *watch_dir;
 char *watch_src_cmd;
 char *output_dir = "scan-data";
 
-char *gst_pipeline, *gst_input_pipeline, *gst_jp4pipeline;
+char *gst_pipeline;
+char gst_default[255]  = "videotestsrc ! ffmpegcolorspace";
+char *gst_jp4pipeline;
 char str_info[255];
 char str_gps[255];
 char size_str[20];
@@ -100,7 +102,7 @@ int flag_write_movie = 1;
 int flag_write_images = 0;
 int flag_verbose = 0;
 int flag_display = 1;
-int flag_gps = 1;
+int flag_gps = 0;
 int flag_watcher_mode = 0;
 int flag_prescanned=0;
 int flag_downscale=1;
@@ -152,14 +154,35 @@ struct confopt confopt[] = {
 void read_config(void) {
 	char line[255];
 	char *n, *v;
+	char f[255];
 	FILE *c;
 	int linenum = 0;
 	struct confopt *conf;
 
-	printf("reading config file: %s\n", conffile);
-	c = fopen(conffile, "r");
-	if (c == NULL)
+	sprintf(f, "./%s", conffile);
+
+	printf("trying to read config file: %s\n", f);
+	c = fopen(f, "r");
+
+	/* fall back to home and etc if config is not in local folder
+	 * does not work - why?
+	 */
+	
+	if (c == NULL) {
+		sprintf(f, "~/.%s", conffile);
+		printf("trying to read config file: %s\n", f);
+		c = fopen(f, "r");
+	}
+
+	if (c == NULL) {
+		sprintf(f, "/etc/%s", conffile);
+		printf("trying to read config file: %s\n", f);
+		c = fopen(f, "r");
+	}
+	
+	if (c == NULL) {
 		return;
+	}	
 		
 	while (fgets(line, sizeof(line), c) != NULL) {		
 		if (strchr(line, '\n') != NULL) {
@@ -1199,11 +1222,11 @@ static void process_buffer (GstElement *sink) {
 			
 		fps_time += ((double)cvGetTickCount() - t);			
 		
-		if (framecount % 20 == 0) {
-			fps = (1000.0 / ((fps_time/20)/((double)cvGetTickFrequency()*1000.)));
+		if (framecount % 5 == 0) {
+			fps = (1000.0 / ((fps_time/5.0)/((double)cvGetTickFrequency()*1000.)));
 			fps_time = 0;
-			//if (flag_prescanned)
-			//	fps *= (double) height / 2.0;			
+			if (flag_prescanned)
+				fps *= (double) height / 2.0;			
 		}
 
 		long time_total = ((long)cvGetTickCount() - t_total)/((long)cvGetTickFrequency()*1000.);
@@ -1439,6 +1462,12 @@ gint main (gint argc, gchar *argv[]) {
 	read_config();
 	read_options(argc, argv);
 
+	if (gst_pipeline == NULL)
+		gst_pipeline = gst_default;
+
+		if (gst_jp4pipeline == NULL)
+		gst_jp4pipeline = "videotestsrc ! ffmpegcolorspace";	
+
 	if(output_file == NULL) {
 		time_t now;
 		struct tm *curtime;
@@ -1468,12 +1497,11 @@ gint main (gint argc, gchar *argv[]) {
 		}
 		gst_pipeline = tmppl;
 	}	
-		
 
 	// init gps
 	if (flag_gps)
 		gps_setup();
-
+		
 	if (!flag_watcher_mode) {
 		/* init GStreamer */
 		gst_init (&argc, &argv);
