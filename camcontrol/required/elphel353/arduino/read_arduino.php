@@ -42,29 +42,21 @@ while (1==1) {
 	// TRIGGER
 	
 	$params = array();
+
+	if ($val_trigger < 1) $val_trigger=1;
 	
-	if ($val_trigger > 10) {
-		$trigger = 4;
-		$trigger_period = 96000000 / (floatval($val_trigger) * 2);
+	$trigger = 4;
+	$trigger_period = 96000000 / (floatval($val_trigger) * 2);
+	printf("trigger[ON]= %ld, ", $trigger_period);		
 
-		printf("trigger[ON]= %ld, ", $trigger_period);		
+	$params["TRIG_PERIOD"] = intval($trigger_period);
+	$set_frame =  elphel_set_P_arr ($params, elphel_get_frame());
 
-		$params["TRIG_PERIOD"] = intval($trigger_period);
-		$set_frame =  elphel_set_P_arr ($params, elphel_get_frame());
-
-		$params = array();		
-		$params["TRIG"] = intval($trigger);
-		$params["FP1000SLIM"] = $val_trigger;
-		$set_frame =  elphel_set_P_arr ($params, elphel_get_frame() + 1);
+	$params = array();		
+	$params["TRIG"] = intval($trigger);
+	$params["FP1000SLIM"] = $val_trigger;
+	$set_frame =  elphel_set_P_arr ($params, elphel_get_frame() + 1);
 				
-	} else {		
-		$trigger = 0;				
-		printf("trigger[OFF],");
-		$params["TRIG"] = intval(0);
-		$params["FP1000SLIM"] = $val_trigger;
-		$set_frame =  elphel_set_P_arr ($params, elphel_get_frame());
-		//$params["TRIG_PERIOD"] = $trigger_period;
-	}
 
 	// VIRTUAL HEIGHT
 	

@@ -4,7 +4,7 @@ a linescanner application..
 requires:
 * gstreamer 0.10
 * openCV
-* openGL
+* openGL & GLUT
 * libgps / gpsd (for gps support)
 
 more soon...

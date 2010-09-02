@@ -69,9 +69,11 @@ struct stat st;
 
 struct gps_data_t *gpsdata;
 struct gps_fix_t gpsfix;
+
 char *gpsd_host;
 char *gpsd_port;
 char gps_status_str[255];
+
 FILE *gpslog_file;
 double distance=0;
 
@@ -83,8 +85,8 @@ char *watch_src_cmd;
 char *output_dir = "scan-data";
 
 char *gst_pipeline;
-char gst_default[255]  = "videotestsrc ! ffmpegcolorspace";
 char *gst_jp4pipeline;
+char gst_default[255]  = "videotestsrc ! ffmpegcolorspace";
 char str_info[255];
 char str_gps[255];
 char size_str[20];
@@ -108,6 +110,8 @@ int flag_prescanned=0;
 int flag_downscale=1;
 int flag_jp4 = 0;
 int flag_calib = 0;
+
+int waiting_eos = 0;
 
 double fps;
 double fps_time;
@@ -270,13 +274,14 @@ void read_options(int argc, char *argv[]) {
 		{"bufferheight",required_argument, 0, 'b'},
 		{"lineheight",	required_argument, 0, 'l'},
 		{"watch-dir",	required_argument, 0, 'i'},
+		{"test",	no_argument, 0, 't'},
 		{0, 0, 0, 0}
 	};
 	
 	while(1) {
 		int option_index = 0;
     
-		c = getopt_long (argc, argv,"o:b:l:ng:p:i:h",long_options, &option_index);
+		c = getopt_long (argc, argv,"o:b:l:ng:p:i:ht",long_options, &option_index);
 		
 		if (c == -1)
              break;
@@ -306,6 +311,10 @@ void read_options(int argc, char *argv[]) {
 
 			case 'i':
 				watch_dir = optarg;
+				break;
+
+			case 't':
+				sprintf(gst_pipeline, "videotestsrc ! ffmpegcolorspace");
 				break;
 				
 			case 'h':
@@ -396,6 +405,12 @@ void gps_setup()
 			fprintf(stderr,
 			"could not open gps-logfile: %s",
 			logfilename);
+		}
+		else {
+			fprintf(gpslog_file,"frame/tile, UTC, mode, \
+latitude, longitude, altitude, \
+speed, distance, track, climb, epx, epy, epv, \
+satellites_visible, satellites_used\n");
 		}
 	}
     gps_clear_fix(&gpsfix); 
@@ -792,7 +807,7 @@ void on_key_up(unsigned char key, int x, int y) {
 		line_height++;
 	}
 	else if (key == '-') {
-		if (line_height > 2) line_height--;
+		if (line_height > 1) line_height--;
 	}
 	else if (key == 'z') {
 		draw_zoom = !draw_zoom;
@@ -802,7 +817,10 @@ void on_key_up(unsigned char key, int x, int y) {
 	}
 	else if (key == 'c') {
 		flag_calib = !flag_calib;
-	}		
+	}
+	else if (key == 'q') {
+		waiting_eos = 1;
+	}
 }
 	
 
@@ -1042,6 +1060,8 @@ static void process_buffer (GstElement *sink) {
 				
 		prctl(PR_GET_NAME,p_name);
 
+
+			
 		GstElement *appsink = sink;			
 		GstBuffer *buffer = 
 			gst_app_sink_pull_buffer(GST_APP_SINK(appsink));		
@@ -1222,8 +1242,8 @@ static void process_buffer (GstElement *sink) {
 			
 		fps_time += ((double)cvGetTickCount() - t);			
 		
-		if (framecount % 5 == 0) {
-			fps = (1000.0 / ((fps_time/5.0)/((double)cvGetTickFrequency()*1000.)));
+		if (framecount % 10 == 0) {
+			fps = (1000.0 / ((fps_time/10.0)/((double)cvGetTickFrequency()*1000.)));
 			fps_time = 0;
 			if (flag_prescanned)
 				fps *= (double) height / 2.0;			
@@ -1274,6 +1294,14 @@ static void on_new_buffer (GstElement *element, gpointer data)
 	prctl(PR_GET_NAME,p_name);
 
 	process_buffer(element);
+
+	/*GMainLoop *loop = (GMainLoop *) data;
+	if (waiting_eos > 0) {
+		//gst_element_send_event (GST_ELEMENT(element), gst_event_new_eos ());
+		//gst_element_set_state (pipeline, GST_STATE_PAUSED);
+		gst_element_set_state(GST_ELEMENT(element),GST_STATE_NULL);
+		g_main_loop_quit(loop);
+	}*/
 		
 	if (flag_verbose) printf("thread %s: has new buffer\n",
 		p_name);
@@ -1449,7 +1477,12 @@ on_bus_call (GstBus *bus, GstMessage *msg, gpointer data) {
 
   return TRUE;
 }
-  
+
+gint g_timeout_func() {
+	printf("XX\n");
+
+	return 1;
+}
 
 gint main (gint argc, gchar *argv[]) {
 	prctl(PR_SET_NAME,"LS-MAIN",0,0,0);
@@ -1474,7 +1507,7 @@ gint main (gint argc, gchar *argv[]) {
 		now = time(NULL);
 		curtime = gmtime(&now);
 		char buf[255];
-		strftime(buf, sizeof(buf), "%Y%d%m-%H%M%S.avi", curtime);
+		strftime(buf, sizeof(buf), "%Y%m%d-%H%M%S.avi", curtime);
 		output_file = buf;
 		strcpy(output_file, buf);
 	}
@@ -1487,6 +1520,7 @@ gint main (gint argc, gchar *argv[]) {
 	
 
 	if (flag_jp4) {
+		flag_write_movie = 0;
 		sprintf(tmppl, "%s", strtok(tmpstr,"OUTFILE"));		
 		char * tmp;
 		tmp = strtok(NULL,"OUTFILE");
@@ -1591,6 +1625,7 @@ gint main (gint argc, gchar *argv[]) {
 
 	/* run main loop */	
 	if (!flag_watcher_mode) {
+		//g_timeout_add(1000, g_timeout_func, NULL);
 		printf("now running...\n");
 		g_main_loop_run (loop);
 	}

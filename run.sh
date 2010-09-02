@@ -7,6 +7,9 @@ sudo service apache2 stop
 sudo service nmbd stop
 sudo service bluetooth stop
 sudo service cups stop
+sudo service network-manager stop
+sudo /etc/init.d/networking restart
+sudo ifup eth0
 
 # necessary due to strange bug in gst_init() with LANG=de_AT.UTF-8
 export LANG=C
@@ -25,14 +28,25 @@ else
 	echo "gpsd is running"
 fi
 
-./scripts/init-cam.sh
+if [ "$1" = "jp4" ]; then
+	./scripts/init-cam.sh jp4
+else
+	./scripts/init-cam.sh
+fi
 
 # now run linescanner
 
-
 while [ 1 == 1 ]; do
-	wget -q -O /dev/null http://192.168.0.10/camogmgui/camogm_interface.php?cmd=start
-	./linescan --pre --gps
-	wget -q -O /dev/null http://192.168.0.10/camogmgui/camogm_interface.php?cmd=stop
+
+	#wget -q -O /dev/null http://192.168.0.10/camogmgui/camogm_interface.php?cmd=start
+
+	if [ "$1" = "jp4" ]; then
+		./linescan --pre --gps --jp4
+	else
+		./linescan --pre --gps
+	fi
+
+	#wget -q -O /dev/null http://192.168.0.10/camogmgui/camogm_interface.php?cmd=stop
+	
 done
 
