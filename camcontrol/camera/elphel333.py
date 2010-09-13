@@ -1,3 +1,8 @@
+#
+# Camera control class for Elphel333
+# (c) 2010 Michael Aschauer
+#
+
 import urllib2
 import socket
 import logging

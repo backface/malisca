@@ -5,7 +5,7 @@ CAM=192.168.0.10
 if [ "$1" = "jp4" ]; then
 	wget -O /dev/null "http://$CAM/setparams.php?COLOR=2"
 else
-	wget -O /dev/null "http://$CAM/setparams.php?COLOR=0"
+	wget -O /dev/null "http://$CAM/setparams.php?COLOR=1"
 fi
 
 wget -O /dev/null "http://$CAM/setparams.php?DAEMON_EN_STREAMER=0"

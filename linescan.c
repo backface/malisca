@@ -1,8 +1,10 @@
-	/* 
- MALISCA linescanner
- with realtime preview 
- Michael Aschauer <m@ash.to>
- 
+/*
+ * MALISCA linescanner
+ * ===============================
+ *
+ * with realtime preview
+ * Copyright © 2010, Michael Aschauer <m@ash.to>
+ * license: GPLv3 - see LICENSE or http://www.gnu.org/licenses/gpl-3.0.txt
 */
 
 #include <time.h>

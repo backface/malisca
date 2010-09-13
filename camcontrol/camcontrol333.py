@@ -1,4 +1,8 @@
 #!/usr/bin/python 
+#
+# Camera control for Elphel333 network camera
+# Copyright (c) 2010 Michael Aschauer
+#
 
 import sys, os
 import pygtk, gtk, gobject
