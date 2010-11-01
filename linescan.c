@@ -283,7 +283,7 @@ void read_options(int argc, char *argv[]) {
 	while(1) {
 		int option_index = 0;
     
-		c = getopt_long (argc, argv,"o:b:l:ng:p:i:ht",long_options, &option_index);
+		c = getopt_long (argc, argv,"o:b:l:ng:p:i:htv",long_options, &option_index);
 		
 		if (c == -1)
              break;
@@ -310,6 +310,10 @@ void read_options(int argc, char *argv[]) {
 			case 'g':
 				flag_gps = 1;				
 				break;
+
+			case 'v':
+				flag_verbose = 1;				
+				break;				
 
 			case 'i':
 				watch_dir = optarg;
