@@ -49,7 +49,7 @@ class CamControl:
 		#self.update_id = gobject.timeout_add(1000, self.ping())
 
 		self.loadParamsFromCam()
-		self.controls_active = True
+		
 
 		# Set up the gstreamer pipeline	for preview
 		self.movie = self.builder.get_object("movie")
@@ -80,6 +80,7 @@ class CamControl:
 		
 	def loadParamsFromCam(self):
 		if self.cam.getParamsFromCAM():
+			self.controls_active = False
 			self.builder.get_object("width").set_value(self.cam.getWidth())
 			self.builder.get_object("height").set_value(self.cam.getHeight())
 			self.builder.get_object("fps").set_value(self.cam.getFPS())
@@ -96,9 +97,9 @@ class CamControl:
 			self.builder.get_object("multicast").set_active(self.cam.getMulticastStatus())
 			self.builder.get_object("photofinish").set_active(self.cam.getPhotoFinishState())
 			self.builder.get_object("normal").set_active(not self.cam.getPhotoFinishState())
-			self.builder.get_object("color_mono").set_active(self.cam.getColorIsMono())
-			self.builder.get_object("color_color").set_active(self.cam.getColorIsColor())
-			self.builder.get_object("color_jp4").set_active(self.cam.getColorIsJP4())
+			#self.builder.get_object("color_mono").set_active(self.cam.getColorIsMono())
+			#self.builder.get_object("color_color").set_active(self.cam.getColorIsColor())
+			#self.builder.get_object("color_jp4").set_active(self.cam.getColorIsJP4())
 
 			# elphel 353:
 			self.builder.get_object("trigger").set_active(self.cam.getTrigger())
@@ -110,7 +111,8 @@ class CamControl:
 			if not self.cam.getAutoExposureStatus():
 				self.builder.get_object("exposure").set_flags(gtk.SENSITIVE)
 
-			self.setStreamerLabel()		
+			self.setStreamerLabel()
+			self.controls_active = True	
 		
 
 	def updateParams(self):
@@ -421,6 +423,7 @@ class CamControl:
 
 	def on_color_mono_clicked(self, obj):		
 		if self.controls_active:
+			print "x";
 			self.controls_active = False
 			self.builder.get_object("color_jp4").set_active(False)
 			self.builder.get_object("color_color").set_active(False)			
@@ -430,6 +433,7 @@ class CamControl:
 
 	def on_color_jp4_clicked(self, obj):		
 		if self.controls_active:
+				print "x";
 				self.controls_active = False
 				if obj.get_active():
 					self.builder.get_object("color_color").set_active(True)

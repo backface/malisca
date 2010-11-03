@@ -41,10 +41,10 @@ int XO[NO]={-10,-8,-7,-6,-5,-4,-3,-2,-1,1,2,3,4,5,6,7,8,10};//xdelta
 int dta[MAXX][NO];// ofsets between the vertical lines
 int ssq[MAXX][NO];// distance between the vertical lines
 
-const int MO=11;
+const int MO=9;
 const int RY=3;
-int YO1[MO]={-3,-2,-1,-1,+0,+0,+1,+1,+2,+2,+3};//ydelta1
-int YO2[MO]={+3,+2,+2,+1,+1,+0,+0,-1,-1,-2,-3};//ydelta2
+int YO1[MO]={-2,-1,-1,+0,+0,+1,+1,+2,+2};//ydelta1
+int YO2[MO]={+2,+2,+1,+1,+0,+0,-1,-1,-2};//ydelta2
 
 double P[MAXX];//red curve
 double Q[MAXX];//temporary curve

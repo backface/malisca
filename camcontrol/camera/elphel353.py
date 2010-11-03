@@ -45,7 +45,7 @@ class Camera(object):
 		#self.setParam("TRIG_PERIOD", str(trig_period))
 		#self.setParam("FPSFLAGS", "2")
 		#return self.setParam("FP1000SLIM", str(value * 1000))
-		self.sendHTTPRequest("setparams.php?FPSFLAGS=2&framedelay=0&TRIG_PERIOD=%f&FP1000SLIM=%f" %(trig_period, value * 1000))
+		self.sendHTTPRequest("setparams.php?FPSFLAGS=2&framedelay=1&TRIG_PERIOD=%f&FP1000SLIM=%f" %(trig_period, value * 1000))
 		
 	def getFPS(self):
 		if self.getTrigger():
@@ -287,16 +287,17 @@ class Camera(object):
 
 	def startPhotofinish(self):
 		self.Photofinish = True
-		self.stopStream()
-		self.setParam("PF_HEIGHT","2")	
-		self.startStream()
+		#self.stopStream()
+		#self.setParam("PF_HEIGHT","2")
+		self.sendHTTPRequest("setparams.php?PF_HEIGHT=2&WOI_HEIGHT=%d" %  int(self.params["WOI_HEIGHT"]))		
+		#self.startStream()
 
 	def startNormalMode(self):
 		self.Photofinish = False
-		self.stopStream()
-		self.setParam("PF_HEIGHT","0")	
-		self.startStream()		
-
+		#elf.stopStream()
+		#self.setParam("PF_HEIGHT","0")	
+		self.sendHTTPRequest("setparams.php?PF_HEIGHT=0&WOI_HEIGHT=%d" %  int(self.params["WOI_HEIGHT"]))
+		#self.startStream()		
 
 
 	## general methods
@@ -318,10 +319,10 @@ class Camera(object):
 
 		
 	def setParam(self, param, value):
-		self.sendHTTPRequest("setparams.php?" + param + "=" + value)
+		self.sendHTTPRequest("setparams.php?" + param + "=" + value +
+			"&framedelay=1")
 		
-		
-		
+				
 	def getParamsFromCAM(self):
 		url = "getparams.php" 
 		data = self.sendHTTPRequest(url)
@@ -332,7 +333,6 @@ class Camera(object):
 			cameraNode = xmldoc.firstChild		
 			valNodes = cameraNode.childNodes
 			valNodes.pop(0)
-
 		
 			for valNode in valNodes:
 				if valNode.nodeType == 1:

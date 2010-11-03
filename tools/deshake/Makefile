@@ -17,7 +17,10 @@ all: $(TARGETS)
 	$(CC) $(CFLAGS) $(OPENCV_FLAGS) $@.cpp -o $@
 	
 install:
-	cp linescan /usr/local/bin
+	cp straighten /usr/local/bin
+
+uninstall:
+	rm -rf /usr/local/bin/straighten	
 	
 clean:
 	rm $(TARGETS)

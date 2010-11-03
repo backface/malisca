@@ -52,13 +52,15 @@ foreach($_GET as $key => $val) {
 if (isset($_GET['framedelay']))
 	$frame_delay = $_GET['framedelay'];
 else
-	$frame_delay = 3; // default in 3 frames
+	$frame_delay = 1; // default in 3 frames
 
 // set parameters
 $set_frame = elphel_set_P_arr ($param, elphel_get_frame() + $frame_delay);
 
-for($i=0;$i<$frame_delay;$i++)
-	elphel_wait_frame();
+// debug
+echo "current frame: ".elphel_get_frame()."<br />\n"; 
+echo "frame with new parameters: ".$set_frame."<br />\n"; 
+echo "Setting parameter "; print_r($param); echo "<br />\n";
 
 include("getparams.php");
 
