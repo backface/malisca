@@ -75,6 +75,8 @@ class Camera(object):
 	def setWidth(self,value):
 		self.setParam("WOI_WIDTH", str(value))
 		return self.setParam("WOI_LEFT", str((self.getMaxWidth() - value)/2) )
+		return self.sendHTTPRequest("setparams.php?WOI_WIDTH=%s&WOI_LEFT=%s" \
+			% (str(value), str((self.getMaxWidth() - value)/2)))		
 
 	def getWidth(self):
 		if self.params.has_key("WOI_WIDTH"):
