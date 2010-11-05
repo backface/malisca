@@ -8,7 +8,9 @@
 
 #include <memory.h>
 #include <getopt.h>
-#include "common.h"
+#include <math.h>
+#include <stdlib.h>
+#include <stdio.h>
 
 #include "cv.h"
 #include "highgui.h"
@@ -17,7 +19,6 @@
 // hardcoded max limit for width of input image
 // otherwise will segfault
 const int MAXX = 20000;
-
 int XS, YS;
 
 // image buffers
@@ -58,6 +59,27 @@ char *input_file;
 int verbose = 0;
 int color = 0;
 
+////
+
+typedef unsigned char byte;
+const int INVALID=0x80000000;
+const double INVALDD=1e300;
+
+template <typename T>
+__inline T square(T u) { return u*u; }
+
+
+__inline double corrfn(double x, double m, double d)
+{
+	return exp(-square((x-m)/d));
+}
+
+__inline int in(int a, int n) { return a<n && a>=0; }
+
+__inline int in(int a, int n0, int n1) { return a>=n0 && a<n1; }
+//__inline int between(int a, int n0, int n1) { return a>=n0 && a<n1; }
+
+////
 
 __inline int valfr1(byte* pi, int pt, int ox, int oy, int shift)
 {

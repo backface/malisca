@@ -4,7 +4,7 @@ LINUXCFLAGS= -g -O2 -lgps
 LINUXINCLUDE=
 LINUXLDFLAGS=
 OPENCV_FLAGS=$(shell pkg-config opencv --cflags --libs)
-GSTREAMER_FLAGS=$(shell pkg-config --cflags --libs gstreamer-plugins-base-0.10 gstreamer-0.10)
+GSTREAMER_FLAGS=$(shell pkg-config --cflags --libs gstreamer-plugins-base-0.10 gstreamer-0.10) -lgstapp-0.10
 GL_FLAGS=$(shell pkg-config --cflags --libs gl) -lGLU -lglut
 
 

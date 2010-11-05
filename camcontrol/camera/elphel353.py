@@ -45,7 +45,7 @@ class Camera(object):
 		#self.setParam("TRIG_PERIOD", str(trig_period))
 		#self.setParam("FPSFLAGS", "2")
 		#return self.setParam("FP1000SLIM", str(value * 1000))
-		self.sendHTTPRequest("setparams.php?FPSFLAGS=2&framedelay=1&TRIG_PERIOD=%f&FP1000SLIM=%f" %(trig_period, value * 1000))
+		self.sendHTTPRequest("setparams.php?FPSFLAGS=2&framedelay=3&TRIG_PERIOD=%f&FP1000SLIM=%f" %(trig_period, value * 1000))
 		
 	def getFPS(self):
 		if self.getTrigger():
@@ -318,9 +318,9 @@ class Camera(object):
 		return self.sendHTTPRequest("phpshell.php?command=reboot%20-f")
 
 		
-	def setParam(self, param, value):
+	def setParam(self, param, value, fd=3):
 		self.sendHTTPRequest("setparams.php?" + param + "=" + value +
-			"&framedelay=1")
+			"&framedelay=%d" % fd)
 		
 				
 	def getParamsFromCAM(self):
