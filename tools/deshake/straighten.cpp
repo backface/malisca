@@ -37,15 +37,25 @@ IplImage* img;
 IplImage* imgc;
 IplImage* out;
 
-const int NO=18;
-int XO[NO]={-10,-8,-7,-6,-5,-4,-3,-2,-1,1,2,3,4,5,6,7,8,10};//xdelta
+const int NO=24;
+int XO[NO]={20,16,-12,-10,-8,-7,-6,-5,-4,-3,-2,-1,1,2,3,4,5,6,7,8,10,12,16,20};//xdelta
 int dta[MAXX][NO];// ofsets between the vertical lines
 int ssq[MAXX][NO];// distance between the vertical lines
 
-const int MO=9;
-const int RY=3;
-int YO1[MO]={-2,-1,-1,+0,+0,+1,+1,+2,+2};//ydelta1
-int YO2[MO]={+2,+2,+1,+1,+0,+0,-1,-1,-2};//ydelta2
+const int MO_big=19;
+const int RY_big=20;
+int YO1_big[MO_big]={-10,-8,-6,-4,-3,-2,-1,-1,+0,+0,+1,+1,+2,+2,+3,+4,+6,+8,+10};//ydelta1
+int YO2_big[MO_big]={+10,+8,+6,+4,+3,+2,+2,+1,+1,+0,+0,-1,-1,-2,-3,-4,-6,-8,-10};//ydelta2
+
+const int MO_small=11;
+const int RY_small=3;
+int YO1_small[MO_small]={-3,-2,-1,-1,+0,+0,+1,+1,+2,+2,+3};//ydelta1
+int YO2_small[MO_small]={+3,+2,+2,+1,+1,+0,+0,-1,-1,-2,+3};//ydelta2
+
+int MO, RY;
+int* YO1;
+int* YO2;
+
 
 double P[MAXX];//red curve
 double Q[MAXX];//temporary curve
@@ -235,6 +245,19 @@ int main(int argc, char* argv[])
 	}
 	XS=img->width;
 	YS=img->height;
+
+	// different settings for small or large images
+	if (YS > 1024) {
+		RY=RY_big;
+		MO=MO_big;
+		YO1=YO1_big;
+		YO2=YO2_big;
+	} else {
+		RY=RY_small;
+		MO=MO_small;
+		YO1=YO1_small;
+		YO2=YO2_small;
+	}
 
 	// generate image buffer according to image size
 	IM = (uchar *) malloc (XS*YS * sizeof(uchar));

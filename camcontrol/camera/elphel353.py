@@ -73,8 +73,9 @@ class Camera(object):
 			return 0			
 		
 	def setWidth(self,value):
-		self.setParam("WOI_WIDTH", str(value))
-		return self.setParam("WOI_LEFT", str((self.getMaxWidth() - value)/2) )
+		#self.setParam("WOI_WIDTH", str(value))
+		#return self.setParam("WOI_LEFT", str((self.getMaxWidth() - value)/2) )
+		# seems to necessary for photofinish mode to set both at once
 		return self.sendHTTPRequest("setparams.php?WOI_WIDTH=%s&WOI_LEFT=%s" \
 			% (str(value), str((self.getMaxWidth() - value)/2)))		
 
@@ -85,8 +86,11 @@ class Camera(object):
 			return 0		
 		
 	def setHeight(self,value):
-		self.setParam("WOI_HEIGHT", str(value))
-		return self.setParam("WOI_TOP", str((self.getMaxHeight() - value)/2) )	
+		#self.setParam("WOI_HEIGHT", str(value))
+		#return self.setParam("WOI_TOP", str((self.getMaxHeight() - value)/2) )
+		# seems to necessary for photofinish mode to set both at once
+		return self.sendHTTPRequest("setparams.php?WOI_HEIGHT=%s&WOI_TOP=%s" \
+			% (str(value), str((self.getMaxHeight() - value)/2)))
 
 	def getHeight(self):
 		if self.params.has_key("WOI_HEIGHT"):
