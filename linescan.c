@@ -96,6 +96,7 @@ char size_str[20];
 int scanline = 0;
 int line_height = 2;
 int buf_height = 32;
+int quality = 99;
 long framecount = 0;
 long outframecount = 0;
 int done = 0;
@@ -141,6 +142,7 @@ struct confopt confopt[] = {
 	{ "dropframes", co_int, { .pc_int = &flag_dropframes } },
 	{ "bufferheight", co_int, { .pc_int = &buf_height } },
 	{ "lineheight", co_int, { .pc_int = &line_height } },
+	{ "quality", co_int, { .pc_int = &quality } },
 	{ "gstpipeline", co_str, { .pc_str = &gst_pipeline } },
 	{ "jp4pipeline", co_str, { .pc_str = &gst_jp4pipeline } },	
 	{ "outfile", co_str, { .pc_str = &output_file } },
@@ -275,6 +277,7 @@ void read_options(int argc, char *argv[]) {
 		{"output",  	required_argument, 0, 'o'},
 		{"bufferheight",required_argument, 0, 'b'},
 		{"lineheight",	required_argument, 0, 'l'},
+		{"quality",	required_argument, 0, 'q'},
 		{"watch-dir",	required_argument, 0, 'i'},
 		{"test",	no_argument, 0, 't'},
 		{0, 0, 0, 0}
@@ -283,7 +286,7 @@ void read_options(int argc, char *argv[]) {
 	while(1) {
 		int option_index = 0;
     
-		c = getopt_long (argc, argv,"o:b:l:ng:p:i:htv",long_options, &option_index);
+		c = getopt_long (argc, argv,"o:b:l:ng:p:i:htvc:",long_options, &option_index);
 		
 		if (c == -1)
              break;
@@ -305,7 +308,11 @@ void read_options(int argc, char *argv[]) {
 				
 			case 'b':
 				buf_height = atoi(optarg);
-				break;				
+				break;
+
+			case 'q':
+				quality = atoi(optarg);
+				break;	
 
 			case 'g':
 				flag_gps = 1;				
@@ -331,6 +338,7 @@ void read_options(int argc, char *argv[]) {
 				printf(" -o | --output FILE           Write result to video FILE.avi \n");
 				printf(" -l | --lineheight HEIGHT     height of scanline [px]\n");
 				printf(" -b | --bufferheight HEIGHT   height of buffer image [px]\n");
+				printf(" -q | --quality QUALITY       JPEG quality of video file (0-100)\n");
 				printf(" -g | --gps                   log GPS data \n");				
 				printf("      --verbose               be verbose \n");
 				printf("      --jp4                   jp4 mode \n");
@@ -946,7 +954,7 @@ void write_movie_start(IplImage *frame)
 
 	writer = cvCreateVideoWriter( 
 		output_file,
-		CV_FOURCC('M','J','P','G'), 100, imgSize, 1);
+		CV_FOURCC('M','J','P','G'), quality, imgSize, 1);
 		//CV_FOURCC('I', '4', '2', '0'), 100, imgSize, 1);
 }
 
