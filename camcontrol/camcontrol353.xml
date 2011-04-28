@@ -1,4 +1,4 @@
-<?xml version="1.0"?>
+<?xml version="1.0" encoding="UTF-8"?>
 <interface>
   <requires lib="gtk+" version="2.16"/>
   <!-- interface-naming-policy project-wide -->
@@ -129,7 +129,7 @@
                         <property name="can_focus">True</property>
                         <property name="tooltip_text" translatable="yes">WOI width</property>
                         <property name="max_length">4</property>
-                        <property name="invisible_char">&#x2022;</property>
+                        <property name="invisible_char">•</property>
                         <property name="width_chars">5</property>
                         <property name="adjustment">width_adjustment</property>
                         <signal name="value_changed" handler="on_width_value_changed"/>
@@ -149,7 +149,7 @@
                         <property name="can_focus">True</property>
                         <property name="tooltip_text" translatable="yes">WOI height</property>
                         <property name="max_length">4</property>
-                        <property name="invisible_char">&#x2022;</property>
+                        <property name="invisible_char">•</property>
                         <property name="width_chars">5</property>
                         <property name="adjustment">height_adjustment</property>
                         <signal name="value_changed" handler="on_height_value_changed"/>
@@ -210,7 +210,7 @@
                         <property name="can_focus">True</property>
                         <property name="tooltip_text" translatable="yes">JPEG Quality</property>
                         <property name="max_length">4</property>
-                        <property name="invisible_char">&#x2022;</property>
+                        <property name="invisible_char">•</property>
                         <property name="width_chars">5</property>
                         <property name="adjustment">quality_adjustment</property>
                         <signal name="value_changed" handler="on_quality_value_changed"/>
@@ -1152,7 +1152,7 @@
     <property name="value">3</property>
     <property name="lower">0.01</property>
     <property name="upper">100</property>
-    <property name="step_increment">0.10000000000000001</property>
+    <property name="step_increment">0.01</property>
     <property name="page_increment">1</property>
     <property name="page_size">1</property>
   </object>

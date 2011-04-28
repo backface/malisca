@@ -16,13 +16,18 @@
 #include <pthread.h>
 #include <signal.h>
 #include <sys/prctl.h>
+#include <locale.h>
+#include <signal.h>
 
 #include "highgui.h"
 #include "cv.h"
 
+
 CvVideoWriter *writer;
 IplImage* buffer4gl, *flatframe, *darkframe;
 IplImage* tilebuffer[100];
+IplImage* frame_crop;
+IplImage* tile_tmp;
 
 pthread_mutex_t frame_mutex;
 IplImage* frame;
@@ -55,7 +60,7 @@ GLenum format;
 GLuint texture[2];
 
 int draw_line = 1;
-int draw_zoom = 1;
+int draw_zoom = 0;
 int draw_grey = 0;
 
 #include <sys/inotify.h>
@@ -92,6 +97,7 @@ char gst_default[255]  = "videotestsrc ! ffmpegcolorspace";
 char str_info[255];
 char str_gps[255];
 char size_str[20];
+char utc[255];
 
 int scanline = 0;
 int line_height = 2;
@@ -156,6 +162,9 @@ struct confopt confopt[] = {
 	{ NULL },
 };
 
+void mysignal_handler(int nr) {
+	printf("\nIGNORE SIGSEGV!\n", nr);
+}
 
 
 // read config file
@@ -370,18 +379,18 @@ void gps_askfordata()
 	    switch (gpsfix.mode) {
 			case MODE_2D:
 				//printf("2D FIX\n");
-				sprintf(gps_status_str,"2D FIX");
+				sprintf(gps_status_str,"2d");
 				break;
 			case MODE_3D:
 				//printf("3D FIX\n");
-				sprintf(gps_status_str,"3D FIX");
+				sprintf(gps_status_str,"3d");
 				break;
 			default:
 				//printf("NO FIX\n");
-				sprintf(gps_status_str,"NO FIX");
+				sprintf(gps_status_str,"none");
 				break;	
 		}
-
+	
 		if (gpsdata->status > 0 && gpsfix.mode >=  MODE_2D) {
 			distance += earth_distance(
 				gpsfix.latitude, gpsfix.longitude,
@@ -410,10 +419,16 @@ void gps_setup()
 		 flag_gps = 0;	 
     }
     else {
-		gps_set_raw_hook(gpsdata, gps_process);
+		//gps_set_raw_hook(gpsdata, gps_process);
 		gps_stream(gpsdata, WATCH_ENABLE|WATCH_NEWSTYLE, NULL);
 		
-		sprintf(logfilename, "%s.log",output_file);
+		if (flag_jp4) {
+			sprintf(logfilename, "%s-jp4.avi.log",strtok(output_file,"."));
+		}
+		else {
+			sprintf(logfilename, "%s.log",output_file);
+		}
+			
 		gpslog_file = fopen(logfilename,"w");
 		if (!gpslog_file) {
 			fprintf(stderr,
@@ -435,12 +450,12 @@ void gps_log()
 	char utc[255];
 	unix_to_iso8601(gpsdata->fix.time, utc, sizeof(utc));
 	
-	if (gpslog_file && gpsfix.mode >= MODE_2D) {
+	if (gpslog_file && gpsfix.mode >= MODE_2D && isnan(gpsfix.latitude)==0) {
 		//if ( (gpsfix.mode >= MODE_2D) && (isnan(gpsfix.latitude)==0) ) {
-			fprintf(gpslog_file,"%ld; %s, %d; %f; %f; %f; %f; %f; %f; %f; %f; %f; %f; %d; %d\n",
+			fprintf(gpslog_file,"%ld; %s; %s; %f; %f; %f; %f; %f; %f; %f; %f; %f; %f; %d; %d\n",
 				outframecount,
 				utc,
-				gpsfix.mode,
+				gps_status_str,
 				gpsfix.latitude,
 				gpsfix.longitude,
 				gpsfix.altitude,
@@ -461,7 +476,7 @@ void gps_log()
 	
 void gl_init() 
 {
-	// create bzffer image
+	// create buffer image
 	if (flag_downscale)
 		buffer4gl = cvCreateImage(cvSize(512, 512), 8, 3);
 	else {
@@ -511,35 +526,37 @@ void gl_write(float x, float y, char *string) {
 	}
 }
 
-void gl_upload(IplImage *frame)
+void gl_upload(IplImage *f)
 {
-	char p_name[16];	
-	prctl(PR_GET_NAME,p_name);	
+	static char p_name[16];	
+	if (!p_name)
+		prctl(PR_GET_NAME,p_name);
+		
 	if (flag_verbose)
 		g_print("thread %s: enter upload\n", 	p_name);
 	
 	double t = (double)cvGetTickCount();
 	//printf("gl_upload frame");
 
-	if (!frame) {
+	if (!f) {
 		printf("could not load frame");
 	}
 	else {				
 		int i;
-
 		if (flag_downscale) {			
-			tilenr = frame->width / frame->height;
-			tile_width = (buffer4gl->width );
-			tile_height = (buffer4gl->height / tilenr);
-		
-			IplImage* tile_tmp = cvCreateImage( cvSize( tile_width, tile_height), 8, 3 );
-		
+			if (!tile_tmp) {
+				tilenr = f->width / f->height;
+				tile_width = (buffer4gl->width );
+				tile_height = (buffer4gl->height / tilenr);			
+				tile_tmp = cvCreateImage( cvSize( tile_width, tile_height), 8, 3 );
+			}
+			
 			// update last tile
-			cvResize(frame, tile_tmp, 0);		
+			//cvResize(f, tile_tmp, 0);
 			cvSetImageROI(buffer4gl, cvRect( 0, (tilenr-1) * tile_height, tile_width, tile_height) );
-			cvResize(tile_tmp, buffer4gl, 0);
+			cvResize(f, buffer4gl, 0);
 			cvResetImageROI(buffer4gl);		
-		
+
 			GLenum format = IsBGR(buffer4gl->channelSeq) ? GL_BGR_EXT : GL_RGBA;
 		
 			glBindTexture(GL_TEXTURE_2D, texture[0]);
@@ -549,11 +566,11 @@ void gl_upload(IplImage *frame)
 				format, GL_UNSIGNED_BYTE, 
 				buffer4gl->imageData); 
 		
-			cvReleaseImage( &tile_tmp );			
+			//cvReleaseImage( &tile_tmp );			
 
 		} else {		
 		
-			GLenum format = IsBGR(frame->channelSeq) ? GL_BGR_EXT : GL_RGBA;
+			GLenum format = IsBGR(f->channelSeq) ? GL_BGR_EXT : GL_RGBA;
 		
 			glBindTexture(GL_TEXTURE_2D, texture[0]);
 			glTexSubImage2D(GL_TEXTURE_2D, 0, 
@@ -573,9 +590,11 @@ void gl_upload(IplImage *frame)
 	);			
 }
 
-void gl_zoom(IplImage *frame) {
-			GLenum format = IsBGR(frame->channelSeq) ? GL_BGR_EXT : GL_RGBA;
-			
+void gl_zoom(IplImage *f) {
+	if(f) {
+			GLenum format = IsBGR(f->channelSeq) ? GL_BGR_EXT : GL_RGBA;
+
+			frame_crop = cvCreateImage( cvSize( buffer4gl->width, f->height), 8, 3 );
 			if (!texture[1]) {
 				glGenTextures(1, &texture[1]);
 				glBindTexture(GL_TEXTURE_2D, texture[1]);
@@ -583,30 +602,28 @@ void gl_zoom(IplImage *frame) {
 				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
-				IplImage* frame_crop = cvCreateImage( cvSize( buffer4gl->width, frame->height), 8, 3 );
-				cvSetImageROI(frame, cvRect( (frame->width - buffer4gl->width)/2, 0, buffer4gl->width, frame->height) );
-				cvResize(frame,frame_crop,0);
+				cvSetImageROI(frame, cvRect( (f->width - buffer4gl->width)/2, 0, buffer4gl->width, f->height) );
+				cvResize(f,frame_crop,0);
 				cvResetImageROI(frame);					
 							
 				glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA,
 					frame_crop->width, frame_crop->height,
 					0, format, GL_UNSIGNED_BYTE, frame_crop->imageData);
-
-				cvReleaseImage( &frame_crop );
 
 			} else {
 				glBindTexture(GL_TEXTURE_2D, texture[1]);				
-				IplImage* frame_crop = cvCreateImage( cvSize( buffer4gl->width, frame->height), 8, 3 );
-				cvSetImageROI(frame, cvRect( (frame->width - buffer4gl->width)/2, 0, buffer4gl->width, frame->height) );
-				cvResize(frame,frame_crop,0);
-				cvResetImageROI(frame);					
+				cvSetImageROI(f, cvRect( (f->width - buffer4gl->width)/2, 0, buffer4gl->width, f->height) );
+				cvResize(f, frame_crop,0);
+				cvResetImageROI(f);					
 							
 				glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA,
 					frame_crop->width, frame_crop->height,
 					0, format, GL_UNSIGNED_BYTE, frame_crop->imageData);
 
-				cvReleaseImage( &frame_crop );			
-			}		
+		
+			}
+			cvReleaseImage( &frame_crop );
+		}	
 }	
 
 void gl_shiftTiles()
@@ -618,12 +635,13 @@ void gl_shiftTiles()
 	double t = (double)cvGetTickCount();
 	int i;
 
+	pthread_mutex_lock(&frame_mutex);
 	if(frame) {	
-	
 		//shift tiles
 		if (flag_downscale) {
 			
-			IplImage* tile_tmp = cvCreateImage( cvSize( tile_width, tile_height), 8, 3 );
+			if (!tile_tmp)
+				tile_tmp = cvCreateImage( cvSize( tile_width, tile_height), 8, 3 );
 		
 			for(i = 0; i < tilenr -1 ; i++) {			
 				cvSetImageROI(buffer4gl, cvRect(0, (i+1) * tile_height, tile_width, tile_height) );
@@ -634,7 +652,7 @@ void gl_shiftTiles()
 				cvResize(tile_tmp, buffer4gl, 0);
 				cvResetImageROI(buffer4gl);
 			}	
-			cvReleaseImage( &tile_tmp );
+			//cvReleaseImage( &tile_tmp );
 
 		} else {
 
@@ -662,6 +680,7 @@ void gl_shiftTiles()
 				frame->imageData);
 		}
 	}
+	pthread_mutex_unlock(&frame_mutex);
 	
 	if (flag_verbose) g_print("thread %s: gl tileshift took %.2fms\n",
 		p_name,
@@ -684,9 +703,10 @@ void gl_reshape(int width, int height)
 
 void gl_draw() 
 {
-	char p_name[16];
-	
-	prctl(PR_GET_NAME,p_name);	
+	static char p_name[16];
+	if (!p_name)
+		prctl(PR_GET_NAME,p_name);
+		
 	if (flag_verbose)
 		g_print("thread %s: enter draw\n", 	p_name);
 	
@@ -696,21 +716,22 @@ void gl_draw()
 	pthread_mutex_lock(&last_full_frame_mutex);
 	if (last_full_frame) {		
 		gl_upload(last_full_frame);
-		if(draw_zoom) gl_zoom(last_full_frame);		
+		if(draw_zoom) gl_zoom(last_full_frame);
+		//if(draw_zoom) gl_zoom(cvCloneImage(last_full_frame));
 		gl_shiftTiles();
 		cvReleaseImage( &last_full_frame );			
 	}
 	pthread_mutex_unlock(&last_full_frame_mutex);
 		
-	//if(!flag_prescanned) {
+	if(!flag_prescanned) {
 		pthread_mutex_lock(&frame_mutex);
 		if (frame) {
-			frame_copy =  cvCloneImage(frame);	
-			gl_upload(frame_copy);
-			cvReleaseImage( &frame_copy );
+			//frame_copy =  cvCloneImage(frame);	
+			gl_upload(frame);
+			//cvReleaseImage( &frame_copy );
 		}
 		pthread_mutex_unlock(&frame_mutex);
-	//}
+	}
 
 	glClearColor(0.0, 0.0, 0.0, 1.0);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);	
@@ -796,6 +817,7 @@ void gl_draw()
 	// write text info
 	gl_write(-508, -520, str_info);
     gl_write(-508,  532, str_gps);
+    gl_write(-508,  510, utc);
     
     glutSwapBuffers();
 
@@ -843,6 +865,8 @@ void *gl_view_thread_func(void *arg) {
 	int argc = 0;
 		
 	prctl(PR_SET_NAME,"LS-DISPLAY",0,0,0);
+	//signal(11,mysignal_handler);
+	
 	if (flag_verbose)
 		printf("create view thread\n");
 	
@@ -857,7 +881,7 @@ void *gl_view_thread_func(void *arg) {
 
 	glutReshapeFunc(gl_reshape);
 	glutDisplayFunc(gl_draw);
-	glutTimerFunc(40, gl_timer, 0);
+	glutTimerFunc(33, gl_timer, 0);
 	glutKeyboardUpFunc(on_key_up);
 	glutMainLoop();
 
@@ -888,11 +912,12 @@ int get_filesize(char* str, char* file)
 
 void clear_frame(IplImage *frame) 
 {
-	int x,y,j;
-	for(y = 0; y < frame->height; y++)
-		for(x = 0; x < frame->width; x++)
-			for (j = 0; j < 3; j++)
-				frame->imageData[y * frame->width * 3 + x * 3 + j] = 0;
+	//int x,y,j;
+	//for(y = 0; y < frame->height; y++)
+	//		for(x = 0; x < frame->width; x++)
+	//		for (j = 0; j < 3; j++)
+	//			frame->imageData[y * frame->width * 3 + x * 3 + j] = 0;
+	bzero(frame->imageData,frame->height * frame->widthStep);
 }
 
 
@@ -930,9 +955,7 @@ void write_movie_frame(IplImage *frame)
 	
 	tt = (double)cvGetTickCount();
 
-	pthread_mutex_lock(&frame_mutex);
 	cvWriteFrame(writer,frame);
-	pthread_mutex_unlock(&frame_mutex);
 					
 	if (flag_verbose) g_print("thread %s: save video frame took %.2fms\n",
 		p_name,
@@ -1005,6 +1028,7 @@ void calibration_apply(IplImage *image)
 	*/
 }
 
+// not yet working
 void calibration_loadimages()
 {
 	// load darkframe
@@ -1069,12 +1093,12 @@ void calibration_loadimages()
 static void process_buffer (GstElement *sink) {		
 		int i, j, x, y;
 		int r = 0;
-		int height, width;
-		char p_name[16];
+		static int height, width;
+		static char p_name[16];
 				
-		prctl(PR_GET_NAME,p_name);
-
-
+		if (!p_name) {
+			prctl(PR_GET_NAME,p_name);
+		}
 			
 		GstElement *appsink = sink;			
 		GstBuffer *buffer = 
@@ -1100,55 +1124,75 @@ static void process_buffer (GstElement *sink) {
 		
 		gst_caps_unref(buff_caps);
 
+		if (flag_gps) {
+			gps_askfordata();
+		}				
+
 		// input is already line-scanned image
 		if (flag_prescanned) {
 
 			outframecount++;
 			
-			pthread_mutex_lock(&last_full_frame_mutex);
+			if (flag_display) {
+				pthread_mutex_lock(&last_full_frame_mutex);
+				pthread_mutex_lock(&frame_mutex);
+			}
+			
 			buf_height = height;
 			
-			if (!last_full_frame || last_full_frame->width != width)
+			if (!last_full_frame || last_full_frame->width != width) {
 				last_full_frame = cvCreateImage(cvSize(width, height), IPL_DEPTH_8U, 3);
-
-			pthread_mutex_lock(&frame_mutex);
+			}
+			
 			if (!frame || frame->width != width) {							
 				frame = cvCreateImage(cvSize(width, height), IPL_DEPTH_8U, 3);
-				//clear_frame(frame);
+				//memcpy(frame->imageData, GST_BUFFER_DATA(buffer),
+				//	frame->height * frame->widthStep);
 			}
-			pthread_mutex_unlock(&frame_mutex);
+			
 
 			if(!GST_BUFFER_DATA(buffer))
 				printf("error: NO BUFFER DATA\n");					
-			else
-				last_full_frame->imageData = GST_BUFFER_DATA(buffer);
-
+			else {
+				memcpy(last_full_frame->imageData, GST_BUFFER_DATA(buffer),
+					last_full_frame->height * last_full_frame->widthStep);
+				//last_full_frame->imageData = GST_BUFFER_DATA(buffer);
+			}
+			
 			if (flag_calib) {
 				calibration_apply(last_full_frame);
 			}
 
-			if ( (!writer || frame->width != width) && flag_write_movie) {
-				write_movie_start(frame);						
+			if ( (!writer || last_full_frame->width != width) && flag_write_movie) {
+				write_movie_start(last_full_frame);	
+						
 			}				
 
 			if(flag_write_images) {
 				write_images(last_full_frame);
 			}
-			
+
 			if(flag_write_movie) {
 				write_movie_frame(last_full_frame);
 			}
-
+			
 			line_height = frame->height;
 				
-			pthread_mutex_unlock(&last_full_frame_mutex);			
+			if (flag_display) {
+				pthread_mutex_unlock(&last_full_frame_mutex);
+				pthread_mutex_unlock(&frame_mutex);
+			}
 
+			if (flag_gps) {
+				gps_log();
+			}
 		}
 		// do real linescan
 		else {
 			
 			//printf("thread %s: lock frame\n", p_name);
-			pthread_mutex_lock(&frame_mutex);		
+			if (flag_display)
+				pthread_mutex_lock(&frame_mutex);		
 
 			if (!frame || frame->width != width) {			
 				printf("Create buffer frame [size: %dx%d]\n", width, buf_height);			
@@ -1169,7 +1213,7 @@ static void process_buffer (GstElement *sink) {
 
 			// just copy 1 line
 			for(i = 0; i < line_height && frame->height > scanline; i++) {
-				for(x = 0; x < frame->width; x++) {
+				/*for(x = 0; x < frame->width; x++) {
 					((uchar *)(frame->imageData + (scanline) * frame->widthStep))[x * frame->nChannels + 0] =				
 					//frame->imageData[scanline * frame->width * 3 + x * 3 + j] = 
 					GST_BUFFER_DATA(buffer)[(height/2 + i)* frame->widthStep + x * frame->nChannels + 0]; // B
@@ -1181,7 +1225,9 @@ static void process_buffer (GstElement *sink) {
 					((uchar *)(frame->imageData + scanline * frame->widthStep))[x*frame->nChannels + 2] =				
 					//frame->imageData[scanline * frame->width * 3 + x * 3 + j] = 
 					GST_BUFFER_DATA(buffer)[(height/2 + i) * frame->widthStep + x * frame->nChannels + 2]; // R
-				}	
+				}*/
+				memcpy( (frame->imageData + (scanline) * frame->widthStep),
+					GST_BUFFER_DATA(buffer)+((height/2 + i) * frame->widthStep),frame->widthStep);				
 				scanline++;
 			}
 			
@@ -1191,8 +1237,10 @@ static void process_buffer (GstElement *sink) {
 				r = 0;
 			}
 
-			pthread_mutex_unlock(&frame_mutex);		
-		
+			if (flag_display) {
+				pthread_mutex_unlock(&frame_mutex);		
+			}
+			
 			// if buffer is full		
 			if(scanline >= frame->height || flag_prescanned) {
 						
@@ -1225,12 +1273,12 @@ static void process_buffer (GstElement *sink) {
 						
 					pthread_mutex_unlock(&frame_mutex);						
 				}
-
+				
 				// wenn line_height keine teiler von buffer höhe ist jetzt fortsetzen			
 				pthread_mutex_lock(&frame_mutex);
 				if (r > 0 || !flag_prescanned) {
 					for(i = line_height - r; i < line_height && frame->height > scanline; i++) {
-						for(x = 0; x < frame->width; x++) {
+						/*for(x = 0; x < frame->width; x++) {
 							((uchar *)(frame->imageData + (scanline) * frame->widthStep))[x * frame->nChannels + 0] =				
 							GST_BUFFER_DATA(buffer)[(height/2 + i) * frame->widthStep + x * frame->nChannels + 0]; // B
 			
@@ -1239,20 +1287,25 @@ static void process_buffer (GstElement *sink) {
 			
 							((uchar *)(frame->imageData + scanline * frame->widthStep))[x*frame->nChannels + 2] =				
 							GST_BUFFER_DATA(buffer)[(height/2 + i) * frame->widthStep + x * frame->nChannels + 2]; // R
-						}	
+						}*/
+						memcpy( (frame->imageData + (scanline) * frame->widthStep),
+							GST_BUFFER_DATA(buffer)+((height/2 + i) * frame->widthStep),frame->widthStep);
 					scanline++;
-					}
+					}						
 				}
-				pthread_mutex_unlock(&frame_mutex);		
-			}
+				pthread_mutex_unlock(&frame_mutex);
+
+				if (flag_gps) {
+					gps_log();
+				}		
+			} // end buffer is full
+
 		}
+		
 		
 		gst_buffer_unref(buffer);
 
-		if (flag_gps) {
-			gps_askfordata();
-			gps_log();
-		}	
+				
 			
 		fps_time += ((double)cvGetTickCount() - t);			
 		
@@ -1268,7 +1321,8 @@ static void process_buffer (GstElement *sink) {
 		int mm = ((time_total / 1000) - hh * 3600 )/ 60;
 		int ss = ((time_total / 1000) - mm * 60) % 60;
 		
-		sprintf(str_info,"LH=%d | TIME=%02d:%02d:%02d | OUT=%s #%06ld | IN=#%06ld | FPS:%04.2f (%02.2fms) ",
+		if (flag_gps)
+		 sprintf(str_info,"LH=%d | TIME=%02d:%02d:%02d | OUT=%s #%06ld | IN=#%06ld | FPS:%04.2f (%02.2fms) ",
 			line_height,
 			hh, mm, ss,
 			size_str,
@@ -1276,21 +1330,36 @@ static void process_buffer (GstElement *sink) {
 			framecount,
 			fps ,			
 			((double)cvGetTickCount() - t)/((double)cvGetTickFrequency()*1000.)	);
+		else
+		  sprintf(str_info,"LH=%d | TIME=%02d:%02d:%02d | OUT=%s #%06ld | IN=#%06ld | FPS:%04.2f (%02.2fms) ",
+			line_height,
+			hh, mm, ss,
+			size_str,
+			outframecount,				
+			framecount,
+			fps ,			
+			((double)cvGetTickCount() - t)/((double)cvGetTickFrequency()*1000.)	);			
 			
 
 		printf("\r-> %s",str_info);
 			
-		if (flag_gps) {				
+		if (flag_gps) {
+
+			
+					
 			if (gpsfix.mode >= MODE_2D) {
-				sprintf(str_gps, "GPS=%s, LAT=%.4f LON=%.4f ALT=%.0fm SPD=%.1fkm/h DIST=%.3fkm",
-					gps_status_str,				
+				unix_to_iso8601(gpsfix.time, utc, sizeof(utc));
+				sprintf(str_gps,
+					"GPS=%s,  LAT=%.4f LON=%.4f ALT=%.0fm SPD=%.1fkm/h DIST=%.3fkm",
+					gps_status_str,
 					gpsfix.latitude,
 					gpsfix.longitude,
 					gpsfix.altitude,
 					gpsfix.speed * MPS_TO_KPH,
 					distance / 1000 );
 			} else {
-				sprintf(str_gps, "GPS=NO FIX");
+				sprintf(str_gps,
+					"GPSFIX=%s", gps_status_str);
 			}	
 			//printf("%s",str_gps);
 		}
@@ -1303,9 +1372,11 @@ static void process_buffer (GstElement *sink) {
 
 static void on_new_buffer (GstElement *element, gpointer data)
 {
-	char p_name[16];
-	prctl(PR_SET_NAME,"LS-GST",0,0,0);
-	prctl(PR_GET_NAME,p_name);
+	static char p_name[16];
+	if (!p_name) {
+		prctl(PR_SET_NAME,"LS-GST",0,0,0);
+		prctl(PR_GET_NAME,p_name);
+	}
 
 	process_buffer(element);
 
@@ -1500,7 +1571,7 @@ gint g_timeout_func() {
 
 gint main (gint argc, gchar *argv[]) {
 	prctl(PR_SET_NAME,"LS-MAIN",0,0,0);
-	
+
 	GstElement *pipeline, *source;
 	GstBus *bus;
 	GMainLoop *loop;
@@ -1508,6 +1579,13 @@ gint main (gint argc, gchar *argv[]) {
 	
 	read_config();
 	read_options(argc, argv);
+
+	// does not work anyway
+	setlocale(LC_ALL,"C");
+
+	// ifnorr sigsegv DANGEROUS!!!
+	//signal(SIGSEGV,SIG_IGN);
+	//signal(11,mysignal_handler);
 
 	if (gst_pipeline == NULL)
 		gst_pipeline = gst_default;

@@ -1,6 +1,6 @@
 
 CC = gcc
-LINUXCFLAGS= -g -O2 -lgps
+LINUXCFLAGS= -g -O3 -lgps
 LINUXINCLUDE=
 LINUXLDFLAGS=
 OPENCV_FLAGS=$(shell pkg-config opencv --cflags --libs)

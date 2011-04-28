@@ -37,13 +37,13 @@ IplImage* img;
 IplImage* imgc;
 IplImage* out;
 
-const int NO=24;
-int XO[NO]={20,16,-12,-10,-8,-7,-6,-5,-4,-3,-2,-1,1,2,3,4,5,6,7,8,10,12,16,20};//xdelta
+const int NO=36;
+int XO[NO]={-48,-40,-36,-32,-28,-24,-20,-16,-12,-10,-8,-7,-6,-5,-4,-3,-2,-1,1,2,3,4,5,6,7,8,10,12,16,20,24,28,32,36,40,48};//xdelta
 int dta[MAXX][NO];// ofsets between the vertical lines
 int ssq[MAXX][NO];// distance between the vertical lines
 
 const int MO_big=19;
-const int RY_big=20;
+const int RY_big=15;
 int YO1_big[MO_big]={-10,-8,-6,-4,-3,-2,-1,-1,+0,+0,+1,+1,+2,+2,+3,+4,+6,+8,+10};//ydelta1
 int YO2_big[MO_big]={+10,+8,+6,+4,+3,+2,+2,+1,+1,+0,+0,-1,-1,-2,-3,-4,-6,-8,-10};//ydelta2
 
@@ -56,6 +56,7 @@ int MO, RY;
 int* YO1;
 int* YO2;
 
+int bg_c = 255;
 
 double P[MAXX];//red curve
 double Q[MAXX];//temporary curve
@@ -177,14 +178,15 @@ void read_options(int argc, char *argv[]) {
 	static struct option long_options[] = {
 		{"output", required_argument, 0, 'o'},
 		{"input", required_argument, 0, 'i'},
-		{"verbose",	no_argument, &verbose, 0},	
+		{"verbose",	no_argument, &verbose, 0},
+		{"background",	required_argument, 0, 'b'},			
 		{0, 0, 0, 0}
 	};
 
 	while(1) {
 		int option_index = 0;
     
-		c = getopt_long (argc, argv,"i:o:hv",long_options, &option_index);
+		c = getopt_long (argc, argv,"i:o:b:hv",long_options, &option_index);
 		
 		if (c == -1)
              break;
@@ -205,6 +207,10 @@ void read_options(int argc, char *argv[]) {
 			case 'v':
 				verbose = 1;				
 				break;					
+
+			case 'b':
+				bg_c = atoi(optarg);				
+				break;		
 				
 			case 'h':				
 			default:
@@ -247,7 +253,7 @@ int main(int argc, char* argv[])
 	YS=img->height;
 
 	// different settings for small or large images
-	if (YS > 1024) {
+	if (YS > 512) {
 		RY=RY_big;
 		MO=MO_big;
 		YO1=YO1_big;
@@ -433,8 +439,16 @@ int main(int argc, char* argv[])
 	{
 		for (y=0; y<YS; y++)
 		{
+			
 			int y1=y+int(P[x]+.5);
-
+			if (color) {
+				IM1B[x+y*XS] = bg_c;
+				IM1G[x+y*XS] = bg_c;
+				IM1R[x+y*XS] = bg_c;
+			} else {
+				IM1[x+y*XS]= bg_c;
+			}
+				
 			if (in(y1,YS))
 			{
 				//IM1[x+y*XS]=IM[x+y1*XS];
