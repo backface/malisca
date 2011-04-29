@@ -278,6 +278,7 @@ void read_options(int argc, char *argv[]) {
 		{"jp4", 		no_argument, &flag_jp4, 1},
 		{"watch",	 	no_argument, &flag_watcher_mode, 1},
 		{"nodisplay", 	no_argument, &flag_display, 0},
+		{"nowrite", 	no_argument, &flag_write_movie, 0},
 		{"pre",			no_argument, &flag_prescanned, 1},
 		{"gps", 		no_argument, &flag_gps, 1},
 		{"no-downscale",no_argument, &flag_downscale, 0},
@@ -345,12 +346,13 @@ void read_options(int argc, char *argv[]) {
 				printf("Usage: linescan [options] file\n");
 				printf("Options:\n");
 				printf(" -o | --output FILE           Write result to video FILE.avi \n");
+				printf("      --nowrite               Dont't write movie file \n");
 				printf(" -l | --lineheight HEIGHT     height of scanline [px]\n");
 				printf(" -b | --bufferheight HEIGHT   height of buffer image [px]\n");
 				printf(" -q | --quality QUALITY       JPEG quality of video file (0-100)\n");
 				printf(" -g | --gps                   log GPS data \n");				
 				printf("      --verbose               be verbose \n");
-				printf("      --jp4                   jp4 mode \n");
+				printf("      --jp4                   jp4 mode (Elphel raw)\n");
 				printf("      --nodisplay             run without preview\n");
 				printf("      --no-downscale(NOT YET) no downscale image for preview (slower and BROKEN!)\n");
 				printf("      --calib (NOT YET!)      Use calibration (darkframe substraction and flatframe)\n");
@@ -359,7 +361,6 @@ void read_options(int argc, char *argv[]) {
 				printf("      --watch-src-cmd         command to launch for watching mode\n");
 				printf("      --pre                   source is already line-scanned\n");
 				printf(" -h | --help                  print this help\n");
-				printf("      --no-downscale          downscale image for preview (Faster but broken!)\n");
 				exit(0);				
 		}
 	}	

@@ -221,9 +221,6 @@ if __name__ == '__main__':
 	infoallwriter = GeoInfoWriter(slitscanner.getFileDirectory() +
 		slitscanner.getFilePrefix() + ".info")			
 
-	
-	line = [0,0]
-
 	for moviefile in inputfiles:
 
 		movie = cv.CaptureFromFile(moviefile)
@@ -231,10 +228,9 @@ if __name__ == '__main__':
 		ratio = out_h / float(frame.width)
 		lh = int((frame.height-crop) * ratio * stretch)
 		slitscanner.setSlitWidth(lh)		
-		framecount = 1
+		framecount = 0
+		line = [0,0]
 		
-
-
 		# open and init log files
 		if write_log_files:
 			logfile = moviefile + ".log"
@@ -243,7 +239,6 @@ if __name__ == '__main__':
 					logfile = moviefile[:-8] + ".avi.log"
 					
 			logreader = csv.reader(open(logfile,"rb"), delimiter=";")
-
 			
 			noMoreLogLine = False
 			logreader.next()
@@ -279,17 +274,6 @@ if __name__ == '__main__':
 						img_frame = swapRGB(img_frame)
 					pi = img_frame
 
-					# crop image
-					if crop:
-						pi = pi.crop( (0,0,pi.size[0],pi.size[1]-crop) )
-
-					# stretching	
-					if stretch != 1:
-						pi = pi.resize( (pi.size[0], pi.size[1] *stretch), Image.ANTIALIAS)
-
-					# apply gamma
-					if gamma != -1:
-						pi = imageGamma(pi, (gamma,gamma,gamma))
 						
 					# first tests in pattern noise elimination
 					if flag_calibration:
@@ -325,6 +309,18 @@ if __name__ == '__main__':
 						if display:														
 							cv.ShowImage("original_frame",PIL2Ipl(swapRGB(img_frame)))
 
+					# crop image
+					if crop:
+						pi = pi.crop( (0,0,pi.size[0],pi.size[1]-crop) )
+
+					# stretching	
+					if stretch != 1:
+						pi = pi.resize( (pi.size[0], pi.size[1] *stretch), Image.ANTIALIAS)
+
+					# apply gamma
+					if gamma != -1:
+						pi = imageGamma(pi, (gamma,gamma,gamma))
+						
 					# rotate image
 					pi = pi.rotate(90)
 					if ratio != 1:
@@ -365,17 +361,18 @@ if __name__ == '__main__':
 						 (framecount, moviefile, slitscanner.getFileName())
 
 				# process GPS logs
-				if write_log_files:						
+				if write_log_files:
+					
 					while int(line[0]) < framecount and not noMoreLogLine:							
 						try:
 							last_line = line
 							line = logreader.next()								
 							noMoreLogLine = False
+							
 						except:
 							noMoreLogLine = True
-							line = last_line
 							
-					if int(line[0]) == framecount and line[14]:
+					if int(line[0]) == framecount and len(line)>14:
 						logwriter.writerow(line)
 						
 						gpxalltrackwriter.addTrackpoint(
@@ -395,7 +392,9 @@ if __name__ == '__main__':
 						infoallwriter.addPoint(
 							float(line[3]), float(line[4]),
 							line[1], float(line[5]), float(line[6])								
-						)						
+						)
+					else:
+						"print corrupt log line"					
 
 					if isFull:
 						logwriter = csv.writer(
@@ -412,9 +411,9 @@ if __name__ == '__main__':
 						infowriter.open(slitscanner.getFileName() + ".info.txt")
 						isFull = False
 											
-					if verbose:
-						print "log gps position #%05d %0.4f %0.4f distance: %0.3fkm" % \
-							(framecount,float(line[3]), float(line[4]),
+					if verbose and len(line)>14:
+						print "log gps position #%05d %0.4f %0.4f %sdistance: %0.3fkm" % \
+							(framecount,float(line[3]), float(line[4]), line[1],
 							 (dist + infowriter.getDist()) / 1000)						 
 
 				# read next frame
