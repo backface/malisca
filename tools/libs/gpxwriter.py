@@ -126,5 +126,14 @@ class GeoInfoWriter():
 		info += "Distance: %0.3fkm\n" % (self.dist / 1000)
 		return info
 
+	def getInfoStringHTML(self):
+		info = "FROM: %f° %f° TO: %f° %f°<br />\n" % \
+			(self.first_point[0], self.first_point[1],
+			 self.last_point[0], self.last_point[1])
+		info += "TIME: %s to %s<br />\n" % \
+			(self.firstTime, self.lastTime)
+		info += "DISTANCE: %0.3fkm<br />\n" % (self.dist / 1000)
+		return info
+
 	def getDist(self):
 		return self.dist

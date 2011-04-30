@@ -222,6 +222,11 @@ if __name__ == '__main__':
 	infoallwriter = GeoInfoWriter(slitscanner.getFileDirectory() +
 		slitscanner.getFilePrefix() + ".info")			
 
+	totalframecount = 0
+	slitcount = 0
+	px_pos = 0
+	imgcount = 0	
+	
 	for moviefile in inputfiles:
 
 		movie = cv.CaptureFromFile(moviefile)
@@ -258,7 +263,6 @@ if __name__ == '__main__':
 				if (not overwriteExisting  and slitscanner.fileExists()):
 					# add frame - if full save logs
 					isFull = slitscanner.addButDontScanFrame()
-
 					if verbose:
 						print "EXISTS frame #%05d (%s) to file: %s" % \
 						 (framecount, moviefile, slitscanner.getFileName())							
@@ -374,7 +378,12 @@ if __name__ == '__main__':
 							noMoreLogLine = True
 							
 					if int(line[0]) == framecount and len(line)>14:
-						logwriter.writerow(line)
+						px_pos = (imgcount  * out_w ) + (slitcount * lh)
+						if reverse:
+							px_pos *= -1
+						tmp = line[:]
+						tmp[0] = px_pos
+						logwriter.writerow(tmp)
 						
 						gpxalltrackwriter.addTrackpoint(
 							float(line[3]), float(line[4]),
@@ -390,7 +399,7 @@ if __name__ == '__main__':
 							float(line[3]), float(line[4]),
 							line[1], float(line[5]), float(line[6])								
 						)
-						infoallwriter.addPoint(
+						infoallwriter.addPoint(	
 							float(line[3]), float(line[4]),
 							line[1], float(line[5]), float(line[6])								
 						)
@@ -410,16 +419,20 @@ if __name__ == '__main__':
 						infowriter.save()
 						infoallwriter.save()
 						infowriter.open(slitscanner.getFileName() + ".info.txt")
+						slitcount = 0
+						imgcount += 1
 						isFull = False
 											
 					if verbose and len(line)>14:
-						print "log gps position #%05d %0.4f %0.4f %sdistance: %0.3fkm" % \
-							(framecount,float(line[3]), float(line[4]), line[1],
+						print "log gps position #%05d px: %d, %0.4f %0.4f %s distance: %0.3fkm" % \
+							(framecount, px_pos, float(line[3]), float(line[4]), line[1],
 							 (dist + infowriter.getDist()) / 1000)						 
 
 				# read next frame
 				frame =  cv.QueryFrame(movie)
 				framecount += 1
+				slitcount += 1
+				totalframecount += 1
 					
 
 		# save last image

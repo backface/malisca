@@ -35,15 +35,16 @@ options:
     -i, --input=DIR         input path
     -o, --output=DIR        output path
     -f, --format=FORMAT     image format for cache and output    
-    -n, --name=NAME         NAME		
+        --name=NAME         NAME
+    -n, --nologs            dont process log files
 """
 
 def process_args():
-	global input, output, format, name
+	global input, output, format, name, process_logs
 	
 	try:
 		opts, args = getopt.getopt(sys.argv[1:], "hi:o:n",
-			["help", "input=","output=","name="])
+			["help", "input=","output=","name=","nologs"])
 	except getopt.GetoptError, err:
 		# print help information and exit:
 		print str(err) # will print something like "option -a not recognized"
@@ -62,8 +63,10 @@ def process_args():
 			input=a
 		elif o in ("-f", "--format"):
 			format = a
-		elif o in ("-n","--name"):
+		elif o in ("--name"):			
 			name = a
+		elif o in ("-n","--nologs"):
+			process_logs = False
 		else:
 			assert False, "unhandled option"
 		
@@ -92,6 +95,8 @@ if __name__ == "__main__":
 	if process_logs:
 		infowriter = GeoInfoWriter(output + "/info.txt")
 		gpxwriter = GPXWriter(output + "/" + trackfile)
+	else:
+		print "don't process logs"
 	
 	for file in files:
 
@@ -130,9 +135,12 @@ if __name__ == "__main__":
 		count+=1
 
 	if process_logs: 
-		info = infowriter.getInfoString()
+		info = infowriter.getInfoStringHTML()
 		infowriter.save()
 		gpxwriter.save()
+		info += '&raquo;<a href="%s">trackfile</a>' % trackfile
+	else:
+		info = "no gps log data available."
 		
 	# now write to files	
 	print "%d files found." % count
@@ -153,10 +161,10 @@ if __name__ == "__main__":
 	<head>
 	<body>
 	<h2>%s</h2>
-	<div id="info">%s &raquo;<a href="%s">trackfile</a></div>
+	<div id="info">%s</div>
 	<div id="thumbs">
 		%s
 	</div>
-	</html>''' % ( name, name, info.replace("\n","<br />"),trackfile, source  )
+	</html>''' % ( name, name, info, source  )
 	)
 	f.close()
