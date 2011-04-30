@@ -11,20 +11,21 @@ imagepath = "/data/projects/slitscan/malisca/tile-data/2011-04-18_krems-linz/128
 #imagepath = "/data/projects/rivers-as-lines/satlisca/scan-data/danube-via-sulina+breg/20m/12/landsat/512/"
 imagepath = "/data/projects/donau//scan-data/2006-04-17--pwc-asten-wien/"
 imagepath = "/data/projects/donau//scan-data/2005-07-23--pwc-almasfuszito-hainburg/"
-imagepath = "/data/projects/slitscan/malisca/tile-data/2011-04-27_westautobahn/320x320/"
+#imagepath = "/data/projects/slitscan/malisca/tile-data/2011-04-27_westautobahn/320x320/"
 #imagepath = "/data/projects/slitscan/old/pd-slitscanner/scan-data/2011-04-18--krems-linz/"
 footer = "Danube Panorama Project - http://danubepanorama.net  ·  Copyright © Michael Aschauer, 2011"
 
 page_size = PAPER_A1
 units = UNIT_POINTS
+orientation = LANDSCAPE # LANDSCAPE, PORTRAIT
 
-margin_fac = 0.25
+margin_fac = 0.33
 margin = 6.8
 offset = 0
 limit = 0
 
 readLogs = True
-logstyle = "n"
+logstyle = "old"
 
 ###################################
 
@@ -79,15 +80,19 @@ imagenum = len(images) - offset
 
 
 yscale = 0.8
-page_w = page_size[1]
-page_h = page_size[0]
+if orientation == LANDSCAPE:
+	page_w = page_size[1]
+	page_h = page_size[0]
+else:
+	page_w = page_size[0]
+	page_h = page_size[1]
 
 page_ratio = page_h / page_w
 page_area = page_w * page_h
-page_area_margins = page_w * page_h * margin_fac
+page_area_margins = page_w * (page_h * margin_fac)
 #length_total = len(images) * 
 
-tile_w = math.sqrt( (page_area - page_area * margin_fac) / imagenum )
+tile_w = math.sqrt( (page_area - page_area_margins) / imagenum )
 tile_w = page_w / (math.floor(page_w / tile_w))
 tile_h = tile_w
 
@@ -97,7 +102,7 @@ print tile_w, num_columns, num_rows
 print num_columns * num_rows
 limit = num_columns * math.floor(num_rows)
 print limit
-margin_h = (page_h - ( num_rows * tile_h + (num_rows-1) * tile_h * margin_fac )) / 2 
+margin_h = (page_h - ( num_rows * tile_h + num_rows * tile_h * margin_fac )) / 2 
 
 
 progressTotal(imagenum - offset)
@@ -113,7 +118,7 @@ if not limit > 0:
 	limit = imagenum
 
 if imagenum > 0:
-	if newDocument(page_size, (margin,margin,margin,margin), LANDSCAPE, 1, units, NOFACINGPAGES, 0, 1):
+	if newDocument(page_size, (margin,margin,margin,margin), orientation, 1, units, NOFACINGPAGES, 0, 1):
 		
 		while imagecount < limit:
 			filename,ext = os.path.splitext(images[imagecount])

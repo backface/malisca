@@ -216,6 +216,7 @@ if __name__ == '__main__':
 	if prefix:
 		#slitscanner.setFilePrefix(os.path.basename(moviefile).split(".")[0])
 		slitscanner.setFilePrefix(prefix)
+		
 	gpxalltrackwriter = GPXWriter(slitscanner.getFileDirectory() +
 		slitscanner.getFilePrefix() + ".gpx")
 	infoallwriter = GeoInfoWriter(slitscanner.getFileDirectory() +
