@@ -565,5 +565,5 @@ class CamControl:
 		
 
 if __name__ == '__main__':
-	camcontrol = CamControl("192.168.0.10")
+	camcontrol = CamControl("192.168.0.9")
 	camcontrol.main()

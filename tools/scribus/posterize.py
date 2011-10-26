@@ -7,25 +7,44 @@ import csv
 #from pyproj import Geod
 
 ######################################
-imagepath = "/data/projects/slitscan/malisca/tile-data/2011-04-18_krems-linz/128x128"
+#imagepath = "/data/projects/slitscan/malisca/tile-data/2011-04-18--krems-linz/128x128"
+#imagepath = "/home/mash/data/projects/rivers-as-lines/satlisca/scan-data/ganges/20.0m/12/landsat/512"
+#imagepath = "/data/projects/slitscan/malisca/tile-data/2011-06-17--linz-krems/512x512"
+imagepath = "/data/projects/rivers-as-lines/satlisca/scan-data/nile-via-damietta/20m/12/landsat/512/"
 #imagepath = "/data/projects/rivers-as-lines/satlisca/scan-data/danube-via-sulina+breg/20m/12/landsat/512/"
-imagepath = "/data/projects/donau//scan-data/2006-04-17--pwc-asten-wien/"
-imagepath = "/data/projects/donau//scan-data/2005-07-23--pwc-almasfuszito-hainburg/"
-#imagepath = "/data/projects/slitscan/malisca/tile-data/2011-04-27_westautobahn/320x320/"
+#imagepath = "/data/projects/donau//scan-data/2006-04-17--pwc-asten-wien/"
+#imagepath = "/data/projects/donau//scan-data/2005-07-23--pwc-almasfuszito-hainburg/"
+#imagepath = "/data/projects/slitscan/malisca/tile-data/2011-04-27--westautobahn-Ib/320x320/"
 #imagepath = "/data/projects/slitscan/old/pd-slitscanner/scan-data/2011-04-18--krems-linz/"
-footer = "Danube Panorama Project - http://danubepanorama.net  ·  Copyright © Michael Aschauer, 2011"
+readLogs = True
+logstyle = "old"
 
-page_size = PAPER_A1
+#footer = "Danube Panorama Project - http://danubepanorama.net  ·  Copyright © Michael Aschauer, 2011"
+footer = "Copyright © Michael Aschauer, 2011"
+footer = ""
+
+#title = "Komarom (HU) - Hainburg (AT)"
+#title = "Weissenkirchen (AT) - Linz (AT)"
+#title = "Linz (AT) - Krems (AT)"
+#title = "WHAT IF YOU WOULD PULL NILE TO A STRAIGHT LINE?  ·  The Nile from its tributaries Nyabarong and  Kagera (Rwanda) to the Mediterrian Sea via the Damietta branch"
+title = "WHAT IF YOU WOULD PULL GANGES TO A STRAIGHT LINE?"
+title = ""
+
+page_size = PAPER_A4
 units = UNIT_POINTS
 orientation = LANDSCAPE # LANDSCAPE, PORTRAIT
+margin = 14.2
+
+#page_size = (600,900)
+#units = UNIT_MILLIMETERS
+#orientation = LANDSCAPE # LANDSCAPE, PORTRAIT
+#margin = 5
 
 margin_fac = 0.33
-margin = 6.8
 offset = 0
 limit = 0
 
-readLogs = True
-logstyle = "old"
+
 
 ###################################
 
@@ -98,14 +117,16 @@ tile_h = tile_w
 
 num_columns = page_w / tile_w
 num_rows = imagenum / num_columns
+
+limit = num_columns * math.floor(num_rows)
+num_rows = math.floor(num_rows)
+margin_h = (page_h - (num_rows * tile_h + num_rows * tile_h * margin_fac )) / 2 
+
 print tile_w, num_columns, num_rows
 print num_columns * num_rows
-limit = num_columns * math.floor(num_rows)
 print limit
-margin_h = (page_h - ( num_rows * tile_h + num_rows * tile_h * margin_fac )) / 2 
 
-
-progressTotal(imagenum - offset)
+progressTotal(imagenum)
 imagecount = 0
 pagecount = 0
 xpos = 0
@@ -126,7 +147,8 @@ if imagenum > 0:
 			if imagecount < limit:
 				f = createImage(xpos, ypos, tile_w, tile_h)				
 				loadImage(imagepath + "/" + images[imagecount+offset], f)
-				setScaleImageToFrame(scaletoframe=1, proportional=0, name=f)					
+				setScaleImageToFrame(scaletoframe=1, proportional=0, name=f)
+				setLineStyle(0.0,f)					
 				xpos += tile_w
 				
 				if xpos + 0.1 >= page_w:	
@@ -176,13 +198,16 @@ if imagenum > 0:
 			redrawAll()
 
 		if readLogs:
-			text = "%0.4f° %0.4f° - %0.4f° %0.4f°  ·  UTC: %s - %s  ·  Distance: %0.2f km  ·  %s" %  (firstPos[0], firstPos[1], lastPos[0], lastPos[1], firstPos[2], lastPos[2],
+			text = "%s  ·  %0.4f° %0.4f° - %0.4f° %0.4f°  ·  TIME [UTC]: %s - %s  ·  DISTANCE: %0.2f km  ·  %s" %  (title, firstPos[0], firstPos[1], lastPos[0], lastPos[1], firstPos[2], lastPos[2],
 			(distance / 1000), footer)
 		else:
 			text = footer
 							
 		textname = "info"
-		textfield = createText(margin, page_h - (2 * margin) - 12, page_w- 2*margin, 12, textname)
+		#textfield = createText(margin, page_h - (2 * margin) - 12, page_w- 2*margin, 12, textname)
+		th = 12
+		textfield = createText(margin, margin_h + num_rows*(tile_w+tile_w*margin_fac)-th,
+			page_w- 3*margin, th, textname)
 		setFont("Catalog Pro Regular",textfield)
 		setTextAlignment(ALIGN_RIGHT, textfield)
 		setFontSize(8, textfield)

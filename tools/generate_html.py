@@ -111,14 +111,17 @@ if __name__ == "__main__":
 		if process_logs:
 			if os.path.exists(file + ".log"):
 				logreader = csv.reader(open(file + ".log","rb"), delimiter=";")
-				for line in logreader:
-					infowriter.addPoint(
+				try:
+					for line in logreader:
+						infowriter.addPoint(
 								float(line[3]), float(line[4]),
 								line[1], float(line[5]), float(line[6]))
-					gpxwriter.addTrackpoint(float(line[3]), float(line[4]),
+						gpxwriter.addTrackpoint(float(line[3]), float(line[4]),
 								line[1], float(line[5]), float(line[6]),
 								line[2]
 							)
+				except:
+					print "x"
 								
 		if not os.path.exists(thumb_file):
 			# generate thumbs

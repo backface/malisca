@@ -45,6 +45,7 @@ verbose = True
 prefix = ""
 isFull = False
 lastUTC = ""
+hadfirst = False
 
 def usage():
 	print """
@@ -231,11 +232,14 @@ if __name__ == '__main__':
 
 		movie = cv.CaptureFromFile(moviefile)
 		frame =  cv.QueryFrame(movie)
-		ratio = out_h / float(frame.width)
-		lh = int((frame.height-crop) * ratio * stretch)
-		slitscanner.setSlitWidth(lh)		
-		framecount = 0
-		line = [0,0]
+
+		if not hadfirst:
+			ratio = out_h / float(frame.width)
+			lh = int((frame.height-crop) * ratio * stretch)
+			slitscanner.setSlitWidth(lh)		
+			framecount = 0
+			line = [0,0]
+			hadfirst = True
 		
 		# open and init log files
 		if write_log_files:
@@ -332,8 +336,8 @@ if __name__ == '__main__':
 						pi = pi.resize((pi.size[0] * ratio,pi.size[1] * ratio), Image.ANTIALIAS)
 
 					# if jpg swap RGB
-					if jp4:
-						pi = swapRGB(pi)							
+					#if jp4:
+						#pi = swapRGB(pi)							
 									
 					# add frame - if full save logs
 					isFull =  slitscanner.addFrame(pi)
@@ -433,14 +437,13 @@ if __name__ == '__main__':
 				framecount += 1
 				slitcount += 1
 				totalframecount += 1
-					
-
-		# save last image
-		if not slitscanner.fileExists():
-			slitscanner.saveImage()
 		
 		if write_log_files:
 			gpxwriter.save()
 			gpxalltrackwriter.save()
 			infowriter.save()
 			infoallwriter.save()
+
+	# save last image
+	if not slitscanner.fileExists():
+		slitscanner.saveImage()
