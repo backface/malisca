@@ -1277,7 +1277,7 @@ static void process_buffer (GstElement *sink) {
 				
 				// wenn line_height keine teiler von buffer höhe ist jetzt fortsetzen			
 				pthread_mutex_lock(&frame_mutex);
-				if (r > 0 || !flag_prescanned) {
+				if (r > 0) {
 					for(i = line_height - r; i < line_height && frame->height > scanline; i++) {
 						/*for(x = 0; x < frame->width; x++) {
 							((uchar *)(frame->imageData + (scanline) * frame->widthStep))[x * frame->nChannels + 0] =				
