@@ -1243,7 +1243,7 @@ static void process_buffer (GstElement *sink) {
 			}
 			
 			// if buffer is full		
-			if(scanline >= frame->height || flag_prescanned) {
+			if(scanline >= frame->height) {
 						
 				outframecount++;	
 				scanline = 0;
