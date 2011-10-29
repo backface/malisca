@@ -936,11 +936,9 @@ void write_images(IplImage *frame)
 	if (flag_verbose)
 		printf("thread %s: save to: %s\n",
 			p_name, output_filename);
-
-	pthread_mutex_lock(&frame_mutex);				
+			
 	if(!cvSaveImage(output_filename, frame, 0)) 
 		printf("Could not save: %s\n",output_filename);
-	pthread_mutex_unlock(&frame_mutex);
 				
 	if (flag_verbose)
 		printf("thread %s: save image took %.2fms\n",
@@ -1269,15 +1267,18 @@ static void process_buffer (GstElement *sink) {
 					last_full_frame = cvCloneImage(frame);
 					pthread_mutex_unlock(&last_full_frame_mutex);
 				
-					//empty working frame				
-					clear_frame(frame);
-						
+					//empty working frame
+					pthread_mutex_lock(&frame_mutex);	
+					clear_frame(frame);						
 					pthread_mutex_unlock(&frame_mutex);						
 				}
 				
 				// wenn line_height keine teiler von buffer höhe ist jetzt fortsetzen			
-				pthread_mutex_lock(&frame_mutex);
+				
 				if (r > 0) {
+					if (flag_display) {
+						pthread_mutex_lock(&frame_mutex);
+					}
 					for(i = line_height - r; i < line_height && frame->height > scanline; i++) {
 						/*for(x = 0; x < frame->width; x++) {
 							((uchar *)(frame->imageData + (scanline) * frame->widthStep))[x * frame->nChannels + 0] =				
@@ -1291,10 +1292,12 @@ static void process_buffer (GstElement *sink) {
 						}*/
 						memcpy( (frame->imageData + (scanline) * frame->widthStep),
 							GST_BUFFER_DATA(buffer)+((height/2 + i) * frame->widthStep),frame->widthStep);
-					scanline++;
-					}						
-				}
-				pthread_mutex_unlock(&frame_mutex);
+						scanline++;
+					}
+					if (flag_display) {
+						pthread_mutex_unlock(&frame_mutex);
+					}					
+				}				
 
 				if (flag_gps) {
 					gps_log();
