@@ -1531,8 +1531,8 @@ on_bus_call (GstBus *bus, GstMessage *msg, gpointer data) {
     case GST_MESSAGE_EOS:
 		g_print ("\nGStreamer: (bus) End of stream\n");
 		g_main_loop_quit(loop);
-		pthread_kill(view_thread_id,SIGINT);
-		exit(1);
+		pthread_kill(view_thread,SIGINT);
+		exit(EXIT_SUCCESS);
 		break;
 
     case GST_MESSAGE_ERROR: {
@@ -1549,7 +1549,7 @@ on_bus_call (GstBus *bus, GstMessage *msg, gpointer data) {
 			GST_STATE_READY) == GST_STATE_CHANGE_FAILURE) {
 			printf("GStreamer: unable to set pipeline to paused\n");
 			gst_object_unref(pipeline);
-			exit(0);
+			exit(EXIT_FAILURE);
 		}      
 
 		//g_main_loop_quit (loop);
@@ -1688,23 +1688,24 @@ gint main (gint argc, gchar *argv[]) {
 	if (flag_calib) {
 		calibration_loadimages();		
 	}	
-
+  
+  int result;
 	// init viewer thread
 	if (flag_display) {		
-		view_thread_id = pthread_mutex_init(&frame_mutex, NULL);
-		if (view_thread_id != 0) {
+		result = pthread_mutex_init(&frame_mutex, NULL);
+		if (result != 0) {
 			perror("Mutex initialisation failed");
 			exit(EXIT_FAILURE);
 		}
 
-		view_thread_id = pthread_mutex_init(&last_full_frame_mutex, NULL);
-		if (view_thread_id != 0) {
+		result = pthread_mutex_init(&last_full_frame_mutex, NULL);
+		if (result != 0) {
 			perror("Mutex initialisation failed");
 			exit(EXIT_FAILURE);
 		}		
 
-		view_thread_id = pthread_create(&view_thread, NULL, gl_view_thread_func, NULL);
-		if (view_thread_id != 0) {
+		result = pthread_create(&view_thread, NULL, gl_view_thread_func, NULL);
+		if (result != 0) {
 			perror("Thread creation failed");
 			exit(EXIT_FAILURE);
 		}		
