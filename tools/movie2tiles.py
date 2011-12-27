@@ -16,6 +16,7 @@ import sys, os, subprocess, shlex
 import getopt
 import cv
 import csv
+import glob, re
 import numpy as np
 from libs.slitscanner import SlitScanner
 from libs.gpxwriter import GPXWriter, GeoInfoWriter
@@ -109,8 +110,14 @@ def process_args():
 			output = a
 		elif o in ("-i", "--input"):
 			flist = a.split(" ")
-			for f in flist:
-				inputfiles.append(f) 
+			for f in flist:				
+				if len(glob.glob(f)) > 1:
+					f = glob.glob(f)
+					f.sort();
+					for ff in f:
+						inputfiles.append(ff)
+				else:
+					inputfiles.append(f)		
 		elif o in ("-y", "--height"):
 			size = (size[0],a)
 		elif o in ("-n", "--name"):
@@ -149,12 +156,10 @@ def process_args():
 			stretch = float(a)			
 		elif o in ("--prefix"):
 			prefix = a
-		elif o == "--logsonly":
+		elif o in ("--logsonly"):
 			write_log_files = True
 			process_images = False
 			display = False
-			print "logsonly"
-
 		else:
 			assert False, "unhandled option"
 
@@ -226,10 +231,13 @@ if __name__ == '__main__':
 	totalframecount = 0
 	slitcount = 0
 	px_pos = 0
-	imgcount = 0	
+	imgcount = 0
+
+	#print glob(inputfiles);
+	
 	
 	for moviefile in inputfiles:
-
+		
 		movie = cv.CaptureFromFile(moviefile)
 		frame =  cv.QueryFrame(movie)
 
@@ -240,6 +248,7 @@ if __name__ == '__main__':
 			framecount = 0
 			line = [0,0]
 			hadfirst = True
+
 		
 		# open and init log files
 		if write_log_files:
@@ -371,6 +380,8 @@ if __name__ == '__main__':
 
 				# process GPS logs
 				if write_log_files:
+					pattern1 = "none";
+					pattern2 = "1970-01-01T00:00:00.0Z"
 					
 					while int(line[0]) < framecount and not noMoreLogLine:							
 						try:
@@ -381,7 +392,8 @@ if __name__ == '__main__':
 						except:
 							noMoreLogLine = True
 							
-					if int(line[0]) == framecount and len(line)>14:
+					if int(line[0]) == framecount and len(line)>14 and not re.search(pattern1, line[2]) and not re.search(pattern2, line[1]):
+							
 						px_pos = (imgcount  * out_w ) + (slitcount * lh)
 						if reverse:
 							px_pos *= -1
@@ -408,7 +420,7 @@ if __name__ == '__main__':
 							line[1], float(line[5]), float(line[6])								
 						)
 					else:
-						"print corrupt log line"					
+						print "discarding corrupted log line"					
 
 					if isFull:
 						logwriter = csv.writer(

@@ -1,0 +1,34 @@
+
+----------------------------------
+montage with imagemagick's MONTAGE (examples)
+----------------------------------
+
+cat mont_file_list.txt | montage -limit map 512 -limit memory 1024 -tile 17x8 -geometry 585x585+0+97 +append @- -quality 95 test-A1.jpg
+cat mont_file_list.txt | montage -limit map 512 -limit memory 1024 -tile 17x8 -geometry 413x413+0+63 +append @- -quality 95 test-A2.jpg
+
+----------------------------------
+POSTER SIZES (in pixel bei 300dpi):
+----------------------------------
+A0	px	14043 x 9933
+A1	px	9933 x 7016
+A2	px	7016 x 4961
+A3	px 	4961 x 3508
+A4	px	3508 x 2480
+
+
+----------------------------------
+CSV structure of MALISCA:
+----------------------------------
+Name; Time; Fix; Latitude; Longitude; Altitude; Speed; Distance; Track; Climb; epx; epy; epv; satellites_visible; satellites_used
+
+
+----------------------------------
+SIMPLIFY with GPSBABEL (10m)
+----------------------------------
+
+gpsbabel -i unicsv -f track.log.csv -x position,distance=10 -o unicsv -F track.simplified.csv
+gpsbabel -i unicsv -f track.log.csv -x position,distance=10 -o gpx -F track.simplified.gpx
+
+unicsv structure of GPSBABEL:
+---------------------------------
+No,Latitude,Longitude,Name,Altitude,Speed,FIX,Satellites,Date,Time

@@ -16,7 +16,7 @@ import getopt, csv
 from PIL import Image
 from libs.myutils import *
 from libs.gpxwriter import GPXWriter, GeoInfoWriter
-
+import re
 
 greyscale = False
 input = "./"
@@ -26,6 +26,7 @@ th_height = 128
 process_logs = True
 verbose = True
 trackfile = "track.gpx"
+tracklogfile = "track.log.csv"
 
 def usage():
 	print """
@@ -76,7 +77,7 @@ if __name__ == "__main__":
 	process_args()
 
 	html_file = output + "/index.html"
-	thumb_path = output + "/%dx%d/" % (th_height,th_height)
+	thumb_path = output + "/%d/" % (th_height)
 	meta_file = "%s.txt" % output.split(".")[0]	
 		
 	count = 0
@@ -95,6 +96,7 @@ if __name__ == "__main__":
 	if process_logs:
 		infowriter = GeoInfoWriter(output + "/info.txt")
 		gpxwriter = GPXWriter(output + "/" + trackfile)
+		logwriter = csv.writer(open(output + "/" + tracklogfile,"wb"),delimiter=";")
 	else:
 		print "don't process logs"
 	
@@ -112,14 +114,21 @@ if __name__ == "__main__":
 			if os.path.exists(file + ".log"):
 				logreader = csv.reader(open(file + ".log","rb"), delimiter=";")
 				try:
+					pattern1 = "none";
+					pattern2 = "1970-01-01T00:00:00.0Z"
 					for line in logreader:
-						infowriter.addPoint(
-								float(line[3]), float(line[4]),
-								line[1], float(line[5]), float(line[6]))
-						gpxwriter.addTrackpoint(float(line[3]), float(line[4]),
-								line[1], float(line[5]), float(line[6]),
-								line[2]
-							)
+						# discard non-valid fixes
+						if not re.search(pattern1, line[2]) and not re.search(pattern2, line[1]):
+							logwriter.writerow(line)
+							infowriter.addPoint(
+									float(line[3]), float(line[4]),
+									line[1], float(line[5]), float(line[6]))
+							gpxwriter.addTrackpoint(float(line[3]), float(line[4]),
+									line[1], float(line[5]), float(line[6]),
+									line[2]
+								)
+						else:
+							print "discard non-valid gps log for at %s, fix: %s" % (line[1],line[2])
 				except:
 					print "x"
 								

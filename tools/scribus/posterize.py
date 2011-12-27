@@ -10,27 +10,76 @@ import csv
 #imagepath = "/data/projects/slitscan/malisca/tile-data/2011-04-18--krems-linz/128x128"
 #imagepath = "/home/mash/data/projects/rivers-as-lines/satlisca/scan-data/ganges/20.0m/12/landsat/512"
 #imagepath = "/data/projects/slitscan/malisca/tile-data/2011-06-17--linz-krems/512x512"
-imagepath = "/data/projects/rivers-as-lines/satlisca/scan-data/nile-via-damietta/20m/12/landsat/512/"
+#imagepath = "/data/projects/rivers-as-lines/satlisca/scan-data/nile-via-damietta/20m/12/landsat/512/"
 #imagepath = "/data/projects/rivers-as-lines/satlisca/scan-data/danube-via-sulina+breg/20m/12/landsat/512/"
 #imagepath = "/data/projects/donau//scan-data/2006-04-17--pwc-asten-wien/"
 #imagepath = "/data/projects/donau//scan-data/2005-07-23--pwc-almasfuszito-hainburg/"
 #imagepath = "/data/projects/slitscan/malisca/tile-data/2011-04-27--westautobahn-Ib/320x320/"
 #imagepath = "/data/projects/slitscan/old/pd-slitscanner/scan-data/2011-04-18--krems-linz/"
+
+imagepath  = "/data/projects/slitscan/malisca/tile-data/2011-12-13--varanasi-deshaked/2592x2592-bg_white"
+offset = 7
+limit = 117
 readLogs = True
-logstyle = "old"
+logstyle = "new"
+page_size = PAPER_A2
+orientation = LANDSCAPE # LANDSCAPE, PORTRAIT
+footer = "Copyright © Michael Aschauer, 2011"
+title = "A CHEAP LOW-QUALITY SAMPLE: Along The Ghats of Varanasi/Banaras - The Forest of Bliss"
+
+# VARANASI recording
+#imagepath  = "/data/projects/slitscan/malisca/tile-data/2011-12-06--varanasi-deshaked/2592x2592-level/"
+#offset = 34
+#limit = 177
+#readLogs = False
+#page_size = PAPER_A1
+#orientation = LANDSCAPE # LANDSCAPE, PORTRAIT
+#footer = "Copyright © Michael Aschauer, http://m.ash.to, 2011"
+#title = "Along The Ghats of Benaras - The Forest of Bliss"
+
+# EASTERN SIDE
+#imagepath  = "/data/projects/slitscan/malisca/tile-data/2011-12-06--varanasi/2592x2592/"
+#offset = 224
+#limit = 0
+#readLogs = False
+#page_size = PAPER_A2
+#orientation = LANDSCAPE # LANDSCAPE, PORTRAIT
+#footer = "Copyright © Michael Aschauer, 2011"
+
+#imagepath  = "/data/projects/slitscan/malisca/tile-data/2011-12-06--varanasi-deshaked/2536x2536/"
+#offset = 224
+#limit = 0
+#readLogs = False
+#page_size = PAPER_A2
+#orientation = LANDSCAPE # LANDSCAPE, PORTRAIT
+#footer = "Copyright © Michael Aschauer, 2011"
+
+#imagepath  = "/data/projects/slitscan/malisca/tile-data/2011-12-06--varanasi/2592x2592/"
+#offset = 25
+#limit = 178
+
+#imagepath  = "/data/projects/slitscan/malisca/tile-data/2011-12-15--banares-chunar/128/"
+#offset = 37
+#limit = 0
+
+#imagepath  = "/data/projects/slitscan/malisca/tile-data/2011-12-16--chunar-banares/128/"
+#offset = 0
+#limit = 0
+
+
 
 #footer = "Danube Panorama Project - http://danubepanorama.net  ·  Copyright © Michael Aschauer, 2011"
-footer = "Copyright © Michael Aschauer, 2011"
-footer = ""
+#footer = "Copyright © Michael Aschauer, 2011"
+#footer = ""
 
 #title = "Komarom (HU) - Hainburg (AT)"
 #title = "Weissenkirchen (AT) - Linz (AT)"
 #title = "Linz (AT) - Krems (AT)"
 #title = "WHAT IF YOU WOULD PULL NILE TO A STRAIGHT LINE?  ·  The Nile from its tributaries Nyabarong and  Kagera (Rwanda) to the Mediterrian Sea via the Damietta branch"
-title = "WHAT IF YOU WOULD PULL GANGES TO A STRAIGHT LINE?"
-title = ""
+#title = "WHAT IF YOU WOULD PULL GANGES TO A STRAIGHT LINE?"
+#title = ""
 
-page_size = PAPER_A4
+#page_size = PAPER_A2
 units = UNIT_POINTS
 orientation = LANDSCAPE # LANDSCAPE, PORTRAIT
 margin = 14.2
@@ -41,8 +90,7 @@ margin = 14.2
 #margin = 5
 
 margin_fac = 0.33
-offset = 0
-limit = 0
+
 
 
 
@@ -97,6 +145,12 @@ images.sort()
 
 imagenum = len(images) - offset
 
+if limit > 0:
+	imagenum = limit - offset
+	
+if limit > imagenum:
+	limit = imagenum
+
 
 yscale = 0.8
 if orientation == LANDSCAPE:
@@ -118,7 +172,8 @@ tile_h = tile_w
 num_columns = page_w / tile_w
 num_rows = imagenum / num_columns
 
-limit = num_columns * math.floor(num_rows)
+if limit == 0:
+	limit = num_columns * math.floor(num_rows)
 num_rows = math.floor(num_rows)
 margin_h = (page_h - (num_rows * tile_h + num_rows * tile_h * margin_fac )) / 2 
 
@@ -133,6 +188,7 @@ xpos = 0
 ypos = margin_h
 xkm = 0
 ykm = 0
+hasFirst = False
 
 
 if not limit > 0:
@@ -160,6 +216,7 @@ if imagenum > 0:
 					if not os.path.exists(logfile):
 						logfile = imagepath + "/" + images[imagecount+offset] + ".log"
 					if os.path.exists(logfile):
+						
 						if logstyle == "old":							
 							logreader = csv.reader(open(logfile,"rb"), delimiter=" ")
 							for pos in logreader:
@@ -176,32 +233,40 @@ if imagenum > 0:
 										prevPos = (float(pos[2]),float(pos[3]),pos[4].strip())
 						else:
 							logreader = csv.reader(open(logfile,"rb"), delimiter=";")
-							for pos in logreader:
-								lastPos = (float(pos[3]),float(pos[4]),pos[1].strip())
-								if not hasFirst:
-									firstPos = (float(pos[3]),float(pos[4]),pos[1].strip())
-									prevPos = (float(pos[3]),float(pos[4]),pos[1].strip())
-									hasFirst = True
-								else:
-									#az12, az21, dist = g.inv(prevPos[1],prevPos[0],lastPos[1],lastPos[0])
-									#distance +=	dist
-									distance += getDistance(prevPos[0],prevPos[1],lastPos[0],lastPos[1])
-									prevPos = (float(pos[3]),float(pos[4]),pos[1].strip())					
-					imagecount = imagecount + 1
+							try:
+								for pos in logreader:
+									lastPos = (float(pos[3]),float(pos[4]),pos[1].strip())
+									if not hasFirst:
+										firstPos = (float(pos[3]),float(pos[4]),pos[1].strip())
+										prevPos = (float(pos[3]),float(pos[4]),pos[1].strip())
+										hasFirst = True
+									else:
+										#az12, az21, dist = g.inv(prevPos[1],prevPos[0],lastPos[1],lastPos[0])
+										#distance +=	dist
+										distance += getDistance(prevPos[0],prevPos[1],lastPos[0],lastPos[1])
+										prevPos = (float(pos[3]),float(pos[4]),pos[1].strip())
+							except:
+								# print help information and exit:
+								#print str(err) # will print something like "option -a not recognized"
+								print "error reading log file:", logfile
+					else:
+						print "file not found:", logfile
+
+				imagecount = imagecount + 1
 					
 				if (imagecount < limit and ypos + tile_h >= page_h):
 					newPage(-1)
 					ypos = margin_h
 					xpos = 0			
 					
-			progressSet(imagecount)
+			progressSet(imagecount-offset)
 			redrawAll()
 
 		if readLogs:
 			text = "%s  ·  %0.4f° %0.4f° - %0.4f° %0.4f°  ·  TIME [UTC]: %s - %s  ·  DISTANCE: %0.2f km  ·  %s" %  (title, firstPos[0], firstPos[1], lastPos[0], lastPos[1], firstPos[2], lastPos[2],
 			(distance / 1000), footer)
 		else:
-			text = footer
+			text = "%s  ·  %s" % (title, footer)
 							
 		textname = "info"
 		#textfield = createText(margin, page_h - (2 * margin) - 12, page_w- 2*margin, 12, textname)

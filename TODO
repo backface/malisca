@@ -1,21 +1,27 @@
 
 known issues:
+---------------------------------------
 * "--no-downscale" does not work
 * "--watch-src-cmd" not yet implemented
 * need "export LANG=C" for gps data to be correctly
+* GPS dropouts (device removed) can lead to hangs (fix it!)
 
-todo:
-* calibration process (black and flatframe)
-* post-processing tools
+####################################
+
+TODOS:
+----------------------------------------
+* enhance post-processing tools
 * downscale mode: write full frames to gl buffer.?
-* enable zoom & fullscreen for "no-downscale" mode?
+* enable zoom & fullscreen?
 * drop-frame option
-* integrate camcontrols into linescanner?
-* JP4: debayer in GPU?
+* integrate at least most important camcontrols into linescanner?
 
 further away:
+* JP4 decoding - debayer in GPU?
+* add gps via exif tags?
 * add sound recording
 * multi-camera support
+#################################
 
 camcontrols:
 * read params from config or from camera?

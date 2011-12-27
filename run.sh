@@ -5,8 +5,17 @@
 #stop unwanted services
 sudo service apache2 stop
 sudo service nmbd stop
+sudo service smbd stop
 sudo service bluetooth stop
 sudo service cups stop
+sudo service mysql stop
+sudo service postgresql stop
+sudo service mysql stop
+sudo service tor stop
+sudo service polipo stop
+sudo service portmap stop
+sudo killall mediasrv
+
 sudo service network-manager stop
 sudo /etc/init.d/networking restart
 sudo ifup eth0
@@ -17,16 +26,20 @@ export LANG=C
 # setup route for multicast
 sudo route add -net 232.0.0.0 netmask 255.0.0.0 dev eth0
 
-#start gpsd - if not runing
-GPSD_PID=$(pidof gpsd)
-GPSD_CMD="/usr/local/sbin/gpsd /dev/ttyUSB0"
+#sudo echo Y > /sys/module/usbcore/parameters/old_scheme_first
+#sudo echo -1 >/sys/module/usbcore/parameters/autosuspend
 
-if [ "$GPSD_PID" == "" ]; then
-	echo "no gpsd.. trying to start it"
-	$GPSD_CMD
-else
-	echo "gpsd is running"
-fi
+#sudo killall gpsd
+#start gpsd - if not runing
+#GPSD_PID=$(pidof gpsd)
+#GPSD_CMD="/usr/local/sbin/gpsd /dev/ttyUSB0"
+
+#if [ "$GPSD_PID" == "" ]; then
+#	echo "no gpsd.. trying to start it"
+#	$GPSD_CMD
+#else
+#	echo "gpsd is running"
+#fi
 
 if [ "$1" = "jp4" ]; then
 	./scripts/init-cam.sh jp4
@@ -43,7 +56,7 @@ while [ 1 == 1 ]; do
 	if [ "$1" = "jp4" ]; then
 		./linescan --pre --gps --jp4
 	else
-		./linescan --pre --gps
+		./linescan --gps
 	fi
 
 	#wget -q -O /dev/null http://192.168.0.10/camogmgui/camogm_interface.php?cmd=stop
