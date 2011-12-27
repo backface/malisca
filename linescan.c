@@ -118,7 +118,6 @@ int flag_watcher_mode = 0;
 int flag_prescanned=0;
 int flag_downscale=1;
 int flag_jp4 = 0;
-int flag_calib = 0;
 
 int waiting_eos = 0;
 
@@ -144,7 +143,6 @@ struct confopt {
 struct confopt confopt[] = {
 	{ "verbose", co_bool, { .pc_int = &flag_verbose } },
 	{ "jp4out", co_bool, { .pc_int = &flag_jp4 } },
-	{ "calib", co_bool, { .pc_int = &flag_calib } },
 	{ "dropframes", co_int, { .pc_int = &flag_dropframes } },
 	{ "bufferheight", co_int, { .pc_int = &buf_height } },
 	{ "lineheight", co_int, { .pc_int = &line_height } },
@@ -274,7 +272,6 @@ void read_options(int argc, char *argv[]) {
 		{"verbose",		no_argument, &flag_verbose, 1},		
 		{"brief",   	no_argument, &flag_verbose, 0},
 		{"display", 	no_argument, &flag_display, 1},
-		{"calib", 		no_argument, &flag_calib, 1},
 		{"jp4", 		no_argument, &flag_jp4, 1},
 		{"watch",	 	no_argument, &flag_watcher_mode, 1},
 		{"nodisplay", 	no_argument, &flag_display, 0},
@@ -355,7 +352,6 @@ void read_options(int argc, char *argv[]) {
 				printf("      --jp4                   jp4 mode (Elphel raw)\n");
 				printf("      --nodisplay             run without preview\n");
 				printf("      --no-downscale(NOT YET) no downscale image for preview (slower and BROKEN!)\n");
-				printf("      --calib (NOT YET!)      Use calibration (darkframe substraction and flatframe)\n");
 				printf("      --watch                 watcher mode (use intofiy to watch a directory)\n");
 				printf(" -i | --watch-dir             directory to watch\n");
 				printf("      --watch-src-cmd         command to launch for watching mode\n");
@@ -852,9 +848,6 @@ void on_key_up(unsigned char key, int x, int y) {
 	else if (key == 'g') {
 		draw_grey = !draw_grey;
 	}
-	else if (key == 'c') {
-		flag_calib = !flag_calib;
-	}
 	else if (key == 'q') {
 		waiting_eos = 1;
 	}
@@ -980,115 +973,6 @@ void write_movie_start(IplImage *frame)
 		//CV_FOURCC('I', '4', '2', '0'), 100, imgSize, 1);
 }
 
-void calibration_apply(IplImage *image)
-{
-	IplImage* tmpimg;
-	tmpimg = cvCloneImage(image);
-
-	// substract darframe	
-	if (darkframe) {
-		if (darkframe->height != image->height || darkframe->width != image->width) {
-			printf("darkframe has wrong image size! Do not apply calibration images!\n");
-			flag_calib = 0;
-		}
-		else
-			cvSub(image, darkframe, image,NULL);
-	}
-
-	// divide by flatframe
-	if (flatframe) {
-		if (flatframe->height != image->height || flatframe->width != image->width) {
-			printf("flatframe has wrong image size! Do not apply calibration images!\n");
-			flag_calib = 0;
-		}
-		else		
-			cvDiv(tmpimg, flatframe, image, 150);
-	}
-
-	/*
-	for(i = 0; i < last_full_frame->height; i++) {
-		for(x = 0; x < last_full_frame->width; x++) {
-			//printf("%d",(flatframe->imageData + i * flatframe->widthStep)[x * flatframe->nChannels + 1] );
-			//printf(" %d",(last_full_frame->imageData + i * last_full_frame->widthStep)[x * last_full_frame->nChannels + 1] );
-						
-			if ((flatframe->imageData + i * flatframe->widthStep)[x * flatframe->nChannels + 0] != 0)
-				((uchar *)(last_full_frame->imageData + i * last_full_frame->widthStep))[x * last_full_frame->nChannels + 0] *=
-					255/ ((uchar *)(flatframe->imageData + i * flatframe->widthStep))[x * flatframe->nChannels + 0];					
-							
-			if ((flatframe->imageData + i * flatframe->widthStep)[x * flatframe->nChannels + 1] != 0)
-				((uchar *)(last_full_frame->imageData + i * last_full_frame->widthStep))[x * last_full_frame->nChannels + 1] *=
-					255/ ((uchar*)(flatframe->imageData + i * flatframe->widthStep))[x * flatframe->nChannels + 1];
-
-			if ((flatframe->imageData + i * flatframe->widthStep)[x * flatframe->nChannels + 2] != 0)
-				((uchar *)(last_full_frame->imageData + i * last_full_frame->widthStep))[x * last_full_frame->nChannels + 2] *=
-					255/ ((uchar *)(flatframe->imageData + i * flatframe->widthStep))[x * flatframe->nChannels + 2];
-		}	
-	}
-	*/
-}
-
-// not yet working
-void calibration_loadimages()
-{
-	// load darkframe
-	darkframe = cvLoadImage("calibration/darkframe.jpg", 3);	
-	if (!darkframe) {
-		printf("Could not load darkframe.jpg");
-		exit(1);
-	}			
-
-	flatframe = cvLoadImage("calibration/flatframe.jpg", 3);
-
-	// load flatframe
-	if (!flatframe) {
-		printf("Could not load flatframe.jpg");
-		exit(1);
-	} else {
-		IplImage *flat_normalized = cvCreateImage ( cvSize(flatframe->width,flatframe->height), IPL_DEPTH_8U, 1) ;
-		int i, x;
-
-		// find maxima
-		for(i = 0; i < flatframe->height; i++) {
-			for(x = 0; x < flatframe->width; x++) {
-				if ((flatframe->imageData + i * flatframe->widthStep)[x * flatframe->nChannels + 0] > max_b)
-					max_b = (flatframe->imageData + i * flatframe->widthStep)[x * flatframe->nChannels + 0];
-
-				if ((flatframe->imageData + i * flatframe->widthStep)[x * flatframe->nChannels + 1] > max_g)
-					max_g = (flatframe->imageData + i * flatframe->widthStep)[x * flatframe->nChannels + 1];
-
-				if ((flatframe->imageData + i * flatframe->widthStep)[x * flatframe->nChannels + 2] > max_r)
-					max_r = (flatframe->imageData + i * flatframe->widthStep)[x * flatframe->nChannels + 2];																		
-
-				if ((flatframe->imageData + i * flatframe->widthStep)[x * flatframe->nChannels + 0] > max)
-					max = (flatframe->imageData + i * flatframe->widthStep)[x * flatframe->nChannels + 0];
-
-				if ((flatframe->imageData + i * flatframe->widthStep)[x * flatframe->nChannels + 1] > max)
-					max = (flatframe->imageData + i * flatframe->widthStep)[x * flatframe->nChannels + 1];
-
-				if ((flatframe->imageData + i * flatframe->widthStep)[x * flatframe->nChannels + 2] > max)
-					max = (flatframe->imageData + i * flatframe->widthStep)[x * flatframe->nChannels + 2];																		
-			}				
-		}
-
-		// normalize
-		
-		for(i = 0; i < flatframe->height; i++) {
-			for(x = 0; x < flatframe->width; x++) {
-
-				((uchar *)(flatframe->imageData + i * flatframe->widthStep))[x * flatframe->nChannels + 0] *= 255 /max_g;
-				((uchar *)(flatframe->imageData + i * flatframe->widthStep))[x * flatframe->nChannels + 1] *= 255 /max_g;
-				((uchar *)(flatframe->imageData + i * flatframe->widthStep))[x * flatframe->nChannels + 2] *= 255 /max_r;
-
-			}	
-		}
-
-		//cvShowImage("wind",flatframe);
-		//cvSub(flatframe,darkframe,flatframe,NULL);		
-	}	
-}
-
-
-
 static void process_buffer (GstElement *sink) {		
 		int i, j, x, y;
 		int r = 0;
@@ -1158,10 +1042,6 @@ static void process_buffer (GstElement *sink) {
 				//last_full_frame->imageData = GST_BUFFER_DATA(buffer);
 			}
 			
-			if (flag_calib) {
-				calibration_apply(last_full_frame);
-			}
-
 			if ( (!writer || last_full_frame->width != width) && flag_write_movie) {
 				write_movie_start(last_full_frame);	
 						
@@ -1199,10 +1079,6 @@ static void process_buffer (GstElement *sink) {
 				clear_frame(frame);					
 			}
 
-			if (flag_calib) {
-				calibration_apply(frame);
-			}			
-		
 			if ( (!writer || frame->width != width) && flag_write_movie) {
 				write_movie_start(frame);						
 			}
@@ -1447,9 +1323,6 @@ int inotify_watch()
 						clear_frame(frame);
 					}
 
-					if (flag_calib)
-						calibration_apply(last_full_frame);
-
 					if ( (!writer) && flag_write_movie) {
 						write_movie_start(last_full_frame);
 					}
@@ -1688,11 +1561,7 @@ gint main (gint argc, gchar *argv[]) {
 		printf("GStreamer: pipline playing.\n");
 	}
 
-	if (flag_calib) {
-		calibration_loadimages();		
-	}	
-  
-  int result;
+	int result;
 	// init viewer thread
 	if (flag_display) {		
 		result = pthread_mutex_init(&frame_mutex, NULL);
