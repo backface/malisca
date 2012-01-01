@@ -42,7 +42,7 @@ class GPXWriter:
 	def writeFooter(self):
 		self.fh.write(self.getHeader())	
 		
-	def addTrackpoint(self,lat=0,lon=0,utc="",ele=-1000,speed=-1000,fix=-1):
+	def addTrackpoint(self,lat=0,lon=0,utc="",ele=-1000,speed=-1000,fix=-1,name="",cmt=""):
 		if utc and utc!=self.lastUTC:
 			self.content += '      <trkpt lat="%f" lon="%f">\n' % (lat,lon)
 			if ele > -1000:
@@ -51,6 +51,10 @@ class GPXWriter:
 				self.content += '        <speed>%f</speed>\n' % speed
 			if utc:
 				self.content += '        <time>%s</time>\n' % utc.strip()
+			if name != "":
+				self.content += '        <name>%s</name>\n' % name				
+			if cmt != "":
+				self.content += '        <cmt>%s</cmt>\n' % cmt	
 			if fix.strip() > 0:
 				if fix.strip() == "3":
 					fix = "3d"
@@ -86,6 +90,7 @@ class GeoInfoWriter():
 		self.prevLon = 0
 		self.lastTime = ""
 		self.firstTime = ""
+		self.name = ""
 		self.filename = filename
 
 	def reset(self):
@@ -102,7 +107,7 @@ class GeoInfoWriter():
 		self.fh.write(self.getInfoString())
 		self.fh.close()
 
-	def addPoint(self,lat=0,lon=0,utc="",ele=-1000,speed=-1000,hdop=-1):
+	def addPoint(self,lat=0,lon=0,utc="",ele=-1000,speed=-1000,hdop=-1,name=""):
 		if not self.hasFirst:
 			self.first_point = (lat,lon)
 			self.firstTime = utc
@@ -114,6 +119,7 @@ class GeoInfoWriter():
 
 		self.prevLat = lat
 		self.prevLon = lon
+		self.name = name
 		self.lastTime = utc
 		self.last_point = (lat,lon)
 

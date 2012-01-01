@@ -125,7 +125,7 @@ if __name__ == "__main__":
 									line[1], float(line[5]), float(line[6]))
 							gpxwriter.addTrackpoint(float(line[3]), float(line[4]),
 									line[1], float(line[5]), float(line[6]),
-									line[2]
+									line[2],"",line[0]
 								)
 						else:
 							print "discard non-valid gps log for at %s, fix: %s" % (line[1],line[2])
