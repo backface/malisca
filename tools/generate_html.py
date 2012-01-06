@@ -24,6 +24,8 @@ output = "./"
 name = "test"
 th_height = 128
 process_logs = True
+process_images = True
+process_html = True
 verbose = True
 trackfile = "track.gpx"
 tracklogfile = "track.log.csv"
@@ -44,8 +46,8 @@ def process_args():
 	global input, output, format, name, process_logs
 	
 	try:
-		opts, args = getopt.getopt(sys.argv[1:], "hi:o:n",
-			["help", "input=","output=","name=","nologs"])
+		opts, args = getopt.getopt(sys.argv[1:], "hi:o:nl",
+			["help", "input=","output=","name=","nologs","log-only"])
 	except getopt.GetoptError, err:
 		# print help information and exit:
 		print str(err) # will print something like "option -a not recognized"
@@ -68,6 +70,10 @@ def process_args():
 			name = a
 		elif o in ("-n","--nologs"):
 			process_logs = False
+		elif o in ("-l","--logs-only"):
+			process_logs = True
+			process_images = False
+			process_html = False			
 		else:
 			assert False, "unhandled option"
 		
@@ -104,11 +110,13 @@ if __name__ == "__main__":
 
 		thumb_file = "%s/%s" % (thumb_path,os.path.basename(file))
 		log_file = "%s.log" % file
-		img = Image.open(file)
-		w = img.size[0]
-		h = img.size[1]
-		ratio = th_height / float(h)
-		th_width = int(w * ratio)
+
+		if process_images:
+			img = Image.open(file)
+			w = img.size[0]
+			h = img.size[1]
+			ratio = th_height / float(h)
+			th_width = int(w * ratio)
 
 		if process_logs:
 			if os.path.exists(file + ".log"):
@@ -132,7 +140,7 @@ if __name__ == "__main__":
 				except:
 					print "x"
 								
-		if not os.path.exists(thumb_file):
+		if not os.path.exists(thumb_file) and process_images:
 			# generate thumbs
 			if verbose:
 				print "make thumnail from %s" % os.path.basename(file)			
@@ -140,9 +148,9 @@ if __name__ == "__main__":
 			createPath(thumb_file)
 			img_out.save(thumb_file)
 						
-
-		source += '<a href="%s"><img border="0" src="%s" alt="" height="%d" width="%d" /></a>\n' % \
-		 (file, thumb_file, th_height, th_width)
+		if process_html:
+			source += '<a href="%s"><img border="0" src="%s" alt="" height="%d" width="%d" /></a>\n' % \
+			(file, thumb_file, th_height, th_width)
 
 		count+=1
 
@@ -156,27 +164,27 @@ if __name__ == "__main__":
 		
 	# now write to files	
 	print "%d files found." % count
-	print "generating html.."
+	if process_html:
+		print "generating html.."
 
-
-	# write html
-	f = open(html_file, 'w')	
-	f.write('''<html>
-	<head>
-		<title>%s</title>
-		<meta http-equiv="content-type" content="text/html; charset=UTF-8" />
-		<style type="text/css" media="screen">
-			body {font-family: Georgia, Times New Roman, Times, serif}
-			a {padding:0px;margin:0px}
-			img {padding:0px;margin:0px;margin-right:-4px;margin-top:5px}
-		</style>
-	<head>
-	<body>
-	<h2>%s</h2>
-	<div id="info">%s</div>
-	<div id="thumbs">
-		%s
-	</div>
-	</html>''' % ( name, name, info, source  )
-	)
-	f.close()
+		# write html
+		f = open(html_file, 'w')	
+		f.write('''<html>
+		<head>
+			<title>%s</title>
+			<meta http-equiv="content-type" content="text/html; charset=UTF-8" />
+			<style type="text/css" media="screen">
+				body {font-family: Georgia, Times New Roman, Times, serif}
+				a {padding:0px;margin:0px}
+				img {padding:0px;margin:0px;margin-right:-4px;margin-top:5px}
+			</style>
+		<head>
+		<body>
+		<h2>%s</h2>
+		<div id="info">%s</div>
+		<div id="thumbs">
+			%s
+		</div>
+		</html>''' % ( name, name, info, source  )
+		)
+		f.close()

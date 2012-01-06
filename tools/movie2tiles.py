@@ -219,9 +219,9 @@ if __name__ == '__main__':
 	if reverse:
 		slitscanner.setReverse(True)
 
-	if prefix:
-		#slitscanner.setFilePrefix(os.path.basename(moviefile).split(".")[0])
+	if prefix:	
 		slitscanner.setFilePrefix(prefix)
+
 		
 	gpxalltrackwriter = GPXWriter(slitscanner.getFileDirectory() +
 		slitscanner.getFilePrefix() + ".gpx")
@@ -240,6 +240,10 @@ if __name__ == '__main__':
 		
 		movie = cv.CaptureFromFile(moviefile)
 		frame =  cv.QueryFrame(movie)
+		framecount = 0
+
+		if not prefix:
+			slitscanner.setFilePrefix(os.path.basename(moviefile).split(".")[0])
 
 		if not hadfirst:
 			ratio = out_h / float(frame.width)
@@ -248,7 +252,6 @@ if __name__ == '__main__':
 			framecount = 0
 			line = [0,0]
 			hadfirst = True
-
 		
 		# open and init log files
 		if write_log_files:
@@ -260,7 +263,9 @@ if __name__ == '__main__':
 			logreader = csv.reader(open(logfile,"rb"), delimiter=";")
 			
 			noMoreLogLine = False
-			logreader.next()
+			line = logreader.next()
+			if line[0].find("#"):
+				line = logreader.next()
 			
 			createPath(slitscanner.getFileName() + ".log")
 			logwriter = csv.writer(open(slitscanner.getFileName() + ".log","wb"),
@@ -278,7 +283,7 @@ if __name__ == '__main__':
 					isFull = slitscanner.addButDontScanFrame()
 					if verbose:
 						print "EXISTS frame #%05d (%s) to file: %s" % \
-						 (framecount, moviefile, slitscanner.getFileName())							
+						 (totalframecount, moviefile, slitscanner.getFileName())							
 				else:
 					#jp4 mode pre-processing
 					if jp4:
@@ -375,8 +380,8 @@ if __name__ == '__main__':
 						cv.WaitKey(10)
 				
 					if verbose:
-						print "processing frame #%05d (%s) to file: %s" % \
-						 (framecount, moviefile, slitscanner.getFileName())
+						print "processing frame #%05d (#%05d) (%s) to file: %s" % \
+						 (framecount, totalframecount, moviefile, slitscanner.getFileName())
 
 				# process GPS logs
 				if write_log_files:
@@ -387,9 +392,9 @@ if __name__ == '__main__':
 						try:
 							last_line = line
 							line = logreader.next()								
-							noMoreLogLine = False
-							
+							noMoreLogLine = False							
 						except:
+							print "no more log lines"
 							noMoreLogLine = True
 							
 					if int(line[0]) == framecount and len(line)>14 and not re.search(pattern1, line[2]) and not re.search(pattern2, line[1]):
@@ -420,7 +425,8 @@ if __name__ == '__main__':
 							line[1], float(line[5]), float(line[6])								
 						)
 					else:
-						print "discarding corrupted log line"					
+						print "discarding corrupted log line", len(line)
+						print int(line[0]), framecount				
 
 					if isFull:
 						logwriter = csv.writer(
@@ -441,7 +447,7 @@ if __name__ == '__main__':
 											
 					if verbose and len(line)>14:
 						print "log gps position #%05d px: %d, %0.4f %0.4f %s distance: %0.3fkm" % \
-							(framecount, px_pos, float(line[3]), float(line[4]), line[1],
+							(totalframecount, px_pos, float(line[3]), float(line[4]), line[1],
 							 (dist + infowriter.getDist()) / 1000)						 
 
 				# read next frame
