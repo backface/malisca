@@ -282,7 +282,7 @@ if __name__ == '__main__':
 			
 			if frame != None:
 
-				px_pos = (imgcount  * out_w ) + (framecount * lh)
+				px_pos = framecount * lh
 				if reverse:
 					px_pos *= -1
 
@@ -394,70 +394,71 @@ if __name__ == '__main__':
 							print "processing frame #%05d (#%05d) (%s) to file: %s" % \
 							 (framecount, totalframecount, moviefile, slitscanner.getFileName())
 
-						# process GPS logs
-						if write_log_files:
-							pattern1 = "none";
-							pattern2 = "1970-01-01T00:00:00.0Z"
-							
-							while int(line[0]) < framecount and not noMoreLogLine:							
-								try:
-									last_line = line
-									line = logreader.next()								
-									noMoreLogLine = False							
-								except:
-									print "no more log lines"
-									noMoreLogLine = True
-									
-							if int(line[0]) == framecount and len(line)>14 and not re.search(pattern1, line[2]) and not re.search(pattern2, line[1]):
-									
-
-								tmp = line[:]
-								tmp[0] = px_pos - offset
-								logwriter.writerow(tmp)
+					# process GPS logs
+					if write_log_files:
+						pattern1 = "none";
+						pattern2 = "1970-01-01T00:00:00.0Z"
+						
+						while int(line[0]) < framecount and not noMoreLogLine:							
+							try:
+								last_line = line
+								line = logreader.next()								
+								noMoreLogLine = False							
+							except:
+								print "no more log lines"
+								noMoreLogLine = True
 								
-								gpxalltrackwriter.addTrackpoint(
-									float(line[3]), float(line[4]),
-									line[1], float(line[5]), float(line[6]),
-									line[2], "", line[0]
-								)
-								gpxwriter.addTrackpoint(
-									float(line[3]), float(line[4]),
-									line[1], float(line[5]), float(line[6]),
-									line[2], "", line[0]
-								)
-								infowriter.addPoint(
-									float(line[3]), float(line[4]),
-									line[1], float(line[5]), float(line[6])								
-								)
-								infoallwriter.addPoint(	
-									float(line[3]), float(line[4]),
-									line[1], float(line[5]), float(line[6])								
-								)
-							else:
-								print "discarding corrupted log line", len(line)
-								print int(line[0]), framecount				
+						if int(line[0]) == framecount and len(line)>14 and not re.search(pattern1, line[2]) and not re.search(pattern2, line[1]):								
 
-							if isFull:
-								logwriter = csv.writer(
-									open(
-										slitscanner.getFileName() + ".log",
-										"wb"),
-									delimiter=";")
-								gpxwriter.save()
-								gpxalltrackwriter.save()
-								gpxwriter.open(slitscanner.getFileName() + ".gpx")
-								dist = dist +  infowriter.getDist()
-								infowriter.save()
-								infoallwriter.save()
-								infowriter.open(slitscanner.getFileName() + ".info.txt")
-								slitcount = 0
-								imgcount += 1
-								isFull = False
-													
-							if verbose and len(line)>14:
-								print "log gps position #%05d px: %d, %0.4f %0.4f %s distance: %0.3fkm" % \
-									(totalframecount, px_pos - offset, float(line[3]), float(line[4]), line[1],
-									 (dist + infowriter.getDist()) / 1000)						 
+							tmp = line[:]
+							tmp[0] = px_pos - offset
+							logwriter.writerow(tmp)
+							
+							gpxalltrackwriter.addTrackpoint(
+								float(line[3]), float(line[4]),
+								line[1], float(line[5]), float(line[6]),
+								line[2], "", line[0]
+							)
+							gpxwriter.addTrackpoint(
+								float(line[3]), float(line[4]),
+								line[1], float(line[5]), float(line[6]),
+								line[2], "", line[0]
+							)
+							infowriter.addPoint(
+								float(line[3]), float(line[4]),
+								line[1], float(line[5]), float(line[6])								
+							)
+							infoallwriter.addPoint(	
+								float(line[3]), float(line[4]),
+								line[1], float(line[5]), float(line[6])								
+							)
+							print line[0], px_pos - offset
+							
+						else:
+							print "discarding corrupted log line", len(line)
+							print int(line[0]), framecount				
+
+						if isFull:
+							logwriter = csv.writer(
+								open(
+									slitscanner.getFileName() + ".log",
+									"wb"),
+								delimiter=";")
+							gpxwriter.save()
+							gpxalltrackwriter.save()
+							gpxwriter.open(slitscanner.getFileName() + ".gpx")
+							dist = dist +  infowriter.getDist()
+							infowriter.save()
+							infoallwriter.save()
+							infowriter.open(slitscanner.getFileName() + ".info.txt")
+							slitcount = 0
+							imgcount += 1
+							isFull = False
+												
+						if verbose and len(line)>14:
+							print "log gps position #%05d px: %d, %0.4f %0.4f %s distance: %0.3fkm" % \
+								(totalframecount, px_pos - offset, float(line[3]), float(line[4]), line[1],
+								 (dist + infowriter.getDist()) / 1000)						 
 
 				# read next frame
 				frame =  cv.QueryFrame(movie)
