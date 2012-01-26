@@ -17,16 +17,28 @@ import csv
 #imagepath = "/data/projects/slitscan/malisca/tile-data/2011-04-27--westautobahn-Ib/320x320/"
 #imagepath = "/data/projects/slitscan/old/pd-slitscanner/scan-data/2011-04-18--krems-linz/"
 
-imagepath  = "/data/projects/slitscan/malisca/tile-data/2011-12-13--varanasi-deshaked/2592x2592-bg_white"
-offset = 7
-limit = 117
-readLogs = True
-logstyle = "new"
-page_size = PAPER_A2
-orientation = LANDSCAPE # LANDSCAPE, PORTRAIT
-footer = "Copyright © Michael Aschauer, 2011"
-title = "A CHEAP LOW-QUALITY SAMPLE: Along The Ghats of Varanasi/Banaras - The Forest of Bliss"
+if False:
+	imagepath  = "/data/projects/slitscan/malisca/tile-data/2011-12-13--varanasi-deshaked/2592x2592-bg_white"
+	offset = 0
+	limit = 194
+	readLogs = True
+	logstyle = "new"
+	page_size = PAPER_A2
+	orientation = LANDSCAPE # LANDSCAPE, PORTRAIT
+	footer = "Copyright © Michael Aschauer, 2011"
+	title = "A CHEAP LOW-QUALITY SAMPLE: Along The Ghats of Varanasi/Banaras - The Forest of Bliss"
 
+if True:
+	imagepath  = "/data/projects/slitscan/malisca/tile-data/2012-01-08--guwahati-north-deshaked/2592x2592"
+	offset = 0
+	limit = 0
+	readLogs = True
+	logstyle = "new"
+	page_size = PAPER_A2
+	orientation = LANDSCAPE # LANDSCAPE, PORTRAIT
+	footer = "Copyright © Michael Aschauer, 2012"
+	title = "North Guwahati (Sample)"
+	
 # VARANASI recording
 #imagepath  = "/data/projects/slitscan/malisca/tile-data/2011-12-06--varanasi-deshaked/2592x2592-level/"
 #offset = 34

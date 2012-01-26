@@ -47,6 +47,7 @@ prefix = ""
 isFull = False
 lastUTC = ""
 hadfirst = False
+offset = 0
 
 def usage():
 	print """
@@ -87,12 +88,13 @@ def process_args():
 	global display, format, out_w, out_h, crop, stretch, gamma
 	global process_images, write_log_files, jp4, jp4_gamma
 	global darkframe, whiteframe, flag_calibration, reverse
+	global offset
 	
 	try:
 		opts, args = getopt.getopt(sys.argv[1:], "hi:o:n:s:z:l:x:y:m:wf:c:g",
 			["help", "input=","output=","overwrite","nodisplay","format=",
 			"nologs","logsonly","darkframe=","whiteframe=","calibration",
-			"reverse","jp4","jp4-gamma=","crop=","stretch=", "size=",
+			"reverse","jp4","jp4-gamma=","crop=","stretch=", "size=","offset=",
 			"gamma=","verbose","prefix="])
 	except getopt.GetoptError, err:
 		# print help information and exit:
@@ -156,6 +158,8 @@ def process_args():
 			stretch = float(a)			
 		elif o in ("--prefix"):
 			prefix = a
+		elif o in ("--offset"):
+			offset = int(a)
 		elif o in ("--logsonly"):
 			write_log_files = True
 			process_images = False
@@ -277,178 +281,183 @@ if __name__ == '__main__':
 		while frame != None:
 			
 			if frame != None:
-				
-				if (not overwriteExisting  and slitscanner.fileExists()):
-					# add frame - if full save logs
-					isFull = slitscanner.addButDontScanFrame()
-					if verbose:
-						print "EXISTS frame #%05d (%s) to file: %s" % \
-						 (totalframecount, moviefile, slitscanner.getFileName())							
-				else:
-					#jp4 mode pre-processing
-					if jp4:
-						cv.SaveImage("tmp_frame.jpg",frame)
-						subprocess.call("elphel_dng %d tmp_frame.jpg tmp_frame.dng" % jp4_gamma,shell=True)
-						subprocess.call(["dcraw","-W","-q","3", "tmp_frame.dng"])
-						img_frame = Image.open("tmp_frame.ppm")
-						subprocess.call("rm tmp_frame*", shell=True)						
+
+				px_pos = (imgcount  * out_w ) + (framecount * lh)
+				if reverse:
+					px_pos *= -1
+
+				print px_pos, offset, imgcount, slitcount
+								
+				if offset <= px_pos:
+					if (not overwriteExisting  and slitscanner.fileExists()):
+						# add frame - if full save logs
+						isFull = slitscanner.addButDontScanFrame()
+						if verbose:
+							print "EXISTS frame #%05d (%s) to file: %s" % \
+							 (totalframecount, moviefile, slitscanner.getFileName())							
 					else:
-						img_frame = Ipl2PIL(frame)
-						img_frame = swapRGB(img_frame)
-					pi = img_frame
+						#jp4 mode pre-processing
+						if jp4:
+							cv.SaveImage("tmp_frame.jpg",frame)
+							subprocess.call("elphel_dng %d tmp_frame.jpg tmp_frame.dng" % jp4_gamma,shell=True)
+							subprocess.call(["dcraw","-W","-q","3", "tmp_frame.dng"])
+							img_frame = Image.open("tmp_frame.ppm")
+							subprocess.call("rm tmp_frame*", shell=True)						
+						else:
+							img_frame = Ipl2PIL(frame)
+							img_frame = swapRGB(img_frame)
+						pi = img_frame
 
-						
-					# first tests in pattern noise elimination
-					if flag_calibration:
-						
-						#substract darkframe
-						#pi = ImageChops.subtract(pi,df_im)
-						#pi_dfsub = substractImage(pi,df_im)
-
-						if whiteframe:
-							a = np.asarray(pi)
 							
-						if darkframe:
-							a = a-df
-							pi_dfsub = Image.fromarray(a.astype('uint8'))
-							if display:
-								cv.ShowImage("darkframe_substracted",PIL2Ipl(swapRGB(pi_dfsub)))
-								cv.ShowImage("darkframe",PIL2Ipl(swapRGB(df_im)))
-
-						if whiteframe:
-							# divide frame by normalized grey(white) frame
-							c = a/((b.astype('float')+1)/256)
-							d = c*(c < 255)+255*np.ones(np.shape(c))*(c > 255)
-							e = d.astype('uint8')
-							pi = Image.fromarray(e)					
-							#pi = divideImage(pi_dfsub, gf_im)
-							pi_calib = pi
-							if display:
-								cv.ShowImage("final_frame",PIL2Ipl(swapRGB(pi_calib)))
-								cv.ShowImage("grey_orig",PIL2Ipl(swapRGB(gf_im)))
-								cv.ShowImage("grey_normalized",PIL2Ipl(swapRGB(gf_im_n)))
-							#cv.ShowImage("grey2",PIL2Ipl(swapRGB(gf_im_n2)))
-						
-						if display:														
-							cv.ShowImage("original_frame",PIL2Ipl(swapRGB(img_frame)))
-
-					# crop image
-					if crop:
-						pi = pi.crop( (0,0,pi.size[0],pi.size[1]-crop) )
-
-					# stretching	
-					if stretch != 1:
-						pi = pi.resize( (pi.size[0], pi.size[1] *stretch), Image.ANTIALIAS)
-
-					# apply gamma
-					if gamma != -1:
-						pi = imageGamma(pi, (gamma,gamma,gamma))
-						
-					# rotate image
-					pi = pi.rotate(90)
-					if ratio != 1:
-						pi = pi.resize((pi.size[0] * ratio,pi.size[1] * ratio), Image.ANTIALIAS)
-
-					# if jpg swap RGB
-					#if jp4:
-						#pi = swapRGB(pi)							
-									
-					# add frame - if full save logs
-					isFull =  slitscanner.addFrame(pi)
-
-					# preview display	
-					if display:
-						scale = out_w / float(screen[0])
-						if out_h / float(screen[1]) > scale:
-							scale = out_h / float(screen[1])
-						if scale < 1:
-							scale = 1
-						tile = swapRGB(slitscanner.getImage())
-						cv_im =  PIL2Ipl(
-						tile.resize( (tile.size[0]/scale, tile.size[1]/scale), Image.NEAREST))
-						#now show
-						cv.ShowImage("preview",cv_im)
+						# first tests in pattern noise elimination
 						if flag_calibration:
-							ts = 24
-							cv.MoveWindow("original_frame",0,cv_im.height + ts)
-							cv.MoveWindow("darkframe_substracted",0,cv_im.height + (frame.height+ts) + ts)
-							cv.MoveWindow("final_frame",0,cv_im.height + 2* (frame.height+ts) + ts)
-							cv.MoveWindow("darkframe",0,cv_im.height + 3*(frame.height+ts) + ts)
-							cv.MoveWindow("grey_normalized",0,cv_im.height + 4*(frame.height+ts) + ts)
-							#cv.MoveWindow("grey2",0,cv_im.height + 5*(frame.height+ts) + ts)
-							cv.MoveWindow("grey_orig",0,cv_im.height + 5*(frame.height+ts) + ts)
-						cv.WaitKey(10)
-				
-					if verbose:
-						print "processing frame #%05d (#%05d) (%s) to file: %s" % \
-						 (framecount, totalframecount, moviefile, slitscanner.getFileName())
+							
+							#substract darkframe
+							#pi = ImageChops.subtract(pi,df_im)
+							#pi_dfsub = substractImage(pi,df_im)
 
-				# process GPS logs
-				if write_log_files:
-					pattern1 = "none";
-					pattern2 = "1970-01-01T00:00:00.0Z"
+							if whiteframe:
+								a = np.asarray(pi)
+								
+							if darkframe:
+								a = a-df
+								pi_dfsub = Image.fromarray(a.astype('uint8'))
+								if display:
+									cv.ShowImage("darkframe_substracted",PIL2Ipl(swapRGB(pi_dfsub)))
+									cv.ShowImage("darkframe",PIL2Ipl(swapRGB(df_im)))
+
+							if whiteframe:
+								# divide frame by normalized grey(white) frame
+								c = a/((b.astype('float')+1)/256)
+								d = c*(c < 255)+255*np.ones(np.shape(c))*(c > 255)
+								e = d.astype('uint8')
+								pi = Image.fromarray(e)					
+								#pi = divideImage(pi_dfsub, gf_im)
+								pi_calib = pi
+								if display:
+									cv.ShowImage("final_frame",PIL2Ipl(swapRGB(pi_calib)))
+									cv.ShowImage("grey_orig",PIL2Ipl(swapRGB(gf_im)))
+									cv.ShowImage("grey_normalized",PIL2Ipl(swapRGB(gf_im_n)))
+								#cv.ShowImage("grey2",PIL2Ipl(swapRGB(gf_im_n2)))
+							
+							if display:														
+								cv.ShowImage("original_frame",PIL2Ipl(swapRGB(img_frame)))
+
+						# crop image
+						if crop:
+							pi = pi.crop( (0,0,pi.size[0],pi.size[1]-crop) )
+
+						# stretching	
+						if stretch != 1:
+							pi = pi.resize( (pi.size[0], pi.size[1] *stretch), Image.ANTIALIAS)
+
+						# apply gamma
+						if gamma != -1:
+							pi = imageGamma(pi, (gamma,gamma,gamma))
+							
+						# rotate image
+						pi = pi.rotate(90)
+						if ratio != 1:
+							pi = pi.resize((pi.size[0] * ratio,pi.size[1] * ratio), Image.ANTIALIAS)
+
+						# if jpg swap RGB
+						#if jp4:
+							#pi = swapRGB(pi)							
+										
+						# add frame - if full save logs
+						isFull =  slitscanner.addFrame(pi)
+
+						# preview display	
+						if display:
+							scale = out_w / float(screen[0])
+							if out_h / float(screen[1]) > scale:
+								scale = out_h / float(screen[1])
+							if scale < 1:
+								scale = 1
+							tile = swapRGB(slitscanner.getImage())
+							cv_im =  PIL2Ipl(
+							tile.resize( (tile.size[0]/scale, tile.size[1]/scale), Image.NEAREST))
+							#now show
+							cv.ShowImage("preview",cv_im)
+							if flag_calibration:
+								ts = 24
+								cv.MoveWindow("original_frame",0,cv_im.height + ts)
+								cv.MoveWindow("darkframe_substracted",0,cv_im.height + (frame.height+ts) + ts)
+								cv.MoveWindow("final_frame",0,cv_im.height + 2* (frame.height+ts) + ts)
+								cv.MoveWindow("darkframe",0,cv_im.height + 3*(frame.height+ts) + ts)
+								cv.MoveWindow("grey_normalized",0,cv_im.height + 4*(frame.height+ts) + ts)
+								#cv.MoveWindow("grey2",0,cv_im.height + 5*(frame.height+ts) + ts)
+								cv.MoveWindow("grey_orig",0,cv_im.height + 5*(frame.height+ts) + ts)
+							cv.WaitKey(10)
 					
-					while int(line[0]) < framecount and not noMoreLogLine:							
-						try:
-							last_line = line
-							line = logreader.next()								
-							noMoreLogLine = False							
-						except:
-							print "no more log lines"
-							noMoreLogLine = True
-							
-					if int(line[0]) == framecount and len(line)>14 and not re.search(pattern1, line[2]) and not re.search(pattern2, line[1]):
-							
-						px_pos = (imgcount  * out_w ) + (slitcount * lh)
-						if reverse:
-							px_pos *= -1
-						tmp = line[:]
-						tmp[0] = px_pos
-						logwriter.writerow(tmp)
-						
-						gpxalltrackwriter.addTrackpoint(
-							float(line[3]), float(line[4]),
-							line[1], float(line[5]), float(line[6]),
-							line[2], "", line[0]
-						)
-						gpxwriter.addTrackpoint(
-							float(line[3]), float(line[4]),
-							line[1], float(line[5]), float(line[6]),
-							line[2], "", line[0]
-						)
-						infowriter.addPoint(
-							float(line[3]), float(line[4]),
-							line[1], float(line[5]), float(line[6])								
-						)
-						infoallwriter.addPoint(	
-							float(line[3]), float(line[4]),
-							line[1], float(line[5]), float(line[6])								
-						)
-					else:
-						print "discarding corrupted log line", len(line)
-						print int(line[0]), framecount				
+						if verbose:
+							print "processing frame #%05d (#%05d) (%s) to file: %s" % \
+							 (framecount, totalframecount, moviefile, slitscanner.getFileName())
 
-					if isFull:
-						logwriter = csv.writer(
-							open(
-								slitscanner.getFileName() + ".log",
-								"wb"),
-							delimiter=";")
-						gpxwriter.save()
-						gpxalltrackwriter.save()
-						gpxwriter.open(slitscanner.getFileName() + ".gpx")
-						dist = dist +  infowriter.getDist()
-						infowriter.save()
-						infoallwriter.save()
-						infowriter.open(slitscanner.getFileName() + ".info.txt")
-						slitcount = 0
-						imgcount += 1
-						isFull = False
-											
-					if verbose and len(line)>14:
-						print "log gps position #%05d px: %d, %0.4f %0.4f %s distance: %0.3fkm" % \
-							(totalframecount, px_pos, float(line[3]), float(line[4]), line[1],
-							 (dist + infowriter.getDist()) / 1000)						 
+						# process GPS logs
+						if write_log_files:
+							pattern1 = "none";
+							pattern2 = "1970-01-01T00:00:00.0Z"
+							
+							while int(line[0]) < framecount and not noMoreLogLine:							
+								try:
+									last_line = line
+									line = logreader.next()								
+									noMoreLogLine = False							
+								except:
+									print "no more log lines"
+									noMoreLogLine = True
+									
+							if int(line[0]) == framecount and len(line)>14 and not re.search(pattern1, line[2]) and not re.search(pattern2, line[1]):
+									
+
+								tmp = line[:]
+								tmp[0] = px_pos - offset
+								logwriter.writerow(tmp)
+								
+								gpxalltrackwriter.addTrackpoint(
+									float(line[3]), float(line[4]),
+									line[1], float(line[5]), float(line[6]),
+									line[2], "", line[0]
+								)
+								gpxwriter.addTrackpoint(
+									float(line[3]), float(line[4]),
+									line[1], float(line[5]), float(line[6]),
+									line[2], "", line[0]
+								)
+								infowriter.addPoint(
+									float(line[3]), float(line[4]),
+									line[1], float(line[5]), float(line[6])								
+								)
+								infoallwriter.addPoint(	
+									float(line[3]), float(line[4]),
+									line[1], float(line[5]), float(line[6])								
+								)
+							else:
+								print "discarding corrupted log line", len(line)
+								print int(line[0]), framecount				
+
+							if isFull:
+								logwriter = csv.writer(
+									open(
+										slitscanner.getFileName() + ".log",
+										"wb"),
+									delimiter=";")
+								gpxwriter.save()
+								gpxalltrackwriter.save()
+								gpxwriter.open(slitscanner.getFileName() + ".gpx")
+								dist = dist +  infowriter.getDist()
+								infowriter.save()
+								infoallwriter.save()
+								infowriter.open(slitscanner.getFileName() + ".info.txt")
+								slitcount = 0
+								imgcount += 1
+								isFull = False
+													
+							if verbose and len(line)>14:
+								print "log gps position #%05d px: %d, %0.4f %0.4f %s distance: %0.3fkm" % \
+									(totalframecount, px_pos - offset, float(line[3]), float(line[4]), line[1],
+									 (dist + infowriter.getDist()) / 1000)						 
 
 				# read next frame
 				frame =  cv.QueryFrame(movie)
