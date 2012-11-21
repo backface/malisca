@@ -29,6 +29,7 @@ process_html = True
 verbose = True
 trackfile = "track.gpx"
 tracklogfile = "track.log.csv"
+logstyle = "one"
 
 def usage():
 	print """
@@ -119,26 +120,41 @@ if __name__ == "__main__":
 			th_width = int(w * ratio)
 
 		if process_logs:
-			if os.path.exists(file + ".log"):
-				logreader = csv.reader(open(file + ".log","rb"), delimiter=";")
-				try:
-					pattern1 = "none";
-					pattern2 = "1970-01-01T00:00:00.0Z"
+
+			if logstyle == "one":
+				if count == 0:
+					logreader = csv.reader(open(file + ".log","rb"), delimiter=" ")
 					for line in logreader:
-						# discard non-valid fixes
-						if not re.search(pattern1, line[2]) and not re.search(pattern2, line[1]):
+						if not line[0] == ";": #temp hack
 							logwriter.writerow(line)
-							infowriter.addPoint(
-									float(line[3]), float(line[4]),
-									line[1], float(line[5]), float(line[6]))
-							gpxwriter.addTrackpoint(float(line[3]), float(line[4]),
-									line[1], float(line[5]), float(line[6]),
-									line[2],"",line[0]
-								)
-						else:
-							print "discard non-valid gps log for at %s, fix: %s" % (line[1],line[2])
-				except:
-					print "x"
+							#print float(line[2]), float(line[3])
+							try:
+								infowriter.addPoint(float(line[2]), float(line[3]))
+								gpxwriter.addTrackpoint(float(line[2]), float(line[3]))
+							except:
+								print "value error"
+							
+			else:		
+				if os.path.exists(file + ".log"):
+					logreader = csv.reader(open(file + ".log","rb"), delimiter=";")
+					try:
+						pattern1 = "none";
+						pattern2 = "1970-01-01T00:00:00.0Z"
+						for line in logreader:
+							# discard non-valid fixes
+							if not re.search(pattern1, line[2]) and not re.search(pattern2, line[1]):
+								logwriter.writerow(line)
+								infowriter.addPoint(
+										float(line[3]), float(line[4]),
+										line[1], float(line[5]), float(line[6]))
+								gpxwriter.addTrackpoint(float(line[3]), float(line[4]),
+										line[1], float(line[5]), float(line[6]),
+										line[2],"",line[0]
+									)
+							else:
+								print "discard non-valid gps log for at %s, fix: %s" % (line[1],line[2])
+					except:
+						print "x"
 								
 		if not os.path.exists(thumb_file) and process_images:
 			# generate thumbs
@@ -158,7 +174,7 @@ if __name__ == "__main__":
 		info = infowriter.getInfoStringHTML()
 		infowriter.save()
 		gpxwriter.save()
-		info += '&raquo;<a href="%s">trackfile</a>' % trackfile
+		info += '&raquo; <a href="%s">trackfile</a>' % trackfile
 	else:
 		info = "no gps log data available."
 		
@@ -181,7 +197,7 @@ if __name__ == "__main__":
 		<head>
 		<body>
 		<h2>%s</h2>
-		<div id="info">%s</div>
+		<div id="info"><p>%s</p></div>
 		<div id="thumbs">
 			%s
 		</div>
