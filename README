@@ -9,3 +9,7 @@ requires:
 
 more soon...
 
+update:
+to compile under ubuntu 12.10 this also needs: 
+apt-get install binutils-gold 
+
