@@ -162,7 +162,7 @@ if __name__ == "__main__":
 				print "make thumnail from %s" % os.path.basename(file)			
 			img_out = img.resize((th_width,th_height),Image.ANTIALIAS)
 			createPath(thumb_file)
-			img_out.save(thumb_file)
+			img_out.save(thumb_file,quality=95)
 						
 		if process_html:
 			source += '<a href="%s"><img border="0" src="%s" alt="" height="%d" width="%d" /></a>\n' % \

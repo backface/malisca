@@ -376,7 +376,7 @@ if __name__ == '__main__':
 								scale = 1
 							tile = swapRGB(slitscanner.getImage())
 							cv_im =  PIL2Ipl(
-							tile.resize( (tile.size[0]/scale, tile.size[1]/scale), Image.NEAREST))
+							tile.resize( ((int) (tile.size[0]/scale), (int) (tile.size[1]/scale)), Image.NEAREST))
 							#now show
 							cv.ShowImage("preview",cv_im)
 							if flag_calibration:

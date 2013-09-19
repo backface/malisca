@@ -1,6 +1,6 @@
 
 CC = gcc
-LINUXCFLAGS= -g -O3 -lgps
+LINUXCFLAGS= -O3 -lgps -Wall
 LINUXINCLUDE=
 LINUXLDFLAGS=
 OPENCV_FLAGS=$(shell pkg-config opencv --cflags --libs)
@@ -14,7 +14,7 @@ TARGETS = $(SOURCES:.c=)
 all: $(TARGETS)
 
 %:%.c
-	$(CC) $(LINUXCFLAGS) $(OPENCV_FLAGS) $(OPENCV_FLAGS) $(GSTREAMER_FLAGS) $(GL_FLAGS)  $@.c -o $@
+	$(CC) $(LINUXCFLAGS) $(GSTREAMER_FLAGS) $(OPENCV_FLAGS)  $(GL_FLAGS)  $@.c -o $@
 	
 install:
 	cp linescan /usr/local/bin

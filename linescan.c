@@ -374,8 +374,9 @@ void gps_process()
 
 void gps_askfordata()
 {
-	while (gps_waiting(gpsdata)){
-	    gps_poll(gpsdata);
+	while (gps_waiting(gpsdata,0)){
+	    //gps_poll(gpsdata);
+	    gps_read(gpsdata);
 	    
 	    switch (gpsfix.mode) {
 			case MODE_2D:
@@ -405,6 +406,7 @@ void gps_askfordata()
 void gps_setup()
 {
 	char logfilename[255];
+	int ret;
 	
 	gpsd_host = "localhost";
 	gpsd_port = "2947";
@@ -412,7 +414,7 @@ void gps_setup()
 	if (gpsd_port == NULL) sprintf(gpsd_port,"%d",2947);
 	if (gpsd_host == NULL) sprintf(gpsd_host,"%s","127.0.0.1");
 
-	gpsdata = gps_open(gpsd_host, gpsd_port);
+	ret = gps_open(gpsd_host, gpsd_port, gpsdata);
     if (!gpsdata) {
 		fprintf(stderr,
 		"no gpsd running or network error: %d, %s\n (%s:%s)\n",

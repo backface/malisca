@@ -6,7 +6,7 @@ import os, time, datetime, math
 import csv
 #from pyproj import Geod
 
-from config.config_poster_a1 import Config
+from config.config_poster_a1_walls_israel import Config
 
 cfg = Config()
 
@@ -85,6 +85,7 @@ page_area_margins = page_w * (page_h * cfg.margin_fac)
 tile_w = math.sqrt( (page_area - page_area_margins) / imagenum )
 tile_w = page_w / (math.floor(page_w / tile_w))
 tile_h = tile_w
+#tile_h = tile_w * 320 / 1440
 
 num_columns = page_w / tile_w
 num_rows = imagenum / num_columns

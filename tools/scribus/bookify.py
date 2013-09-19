@@ -4,28 +4,35 @@ from scribus import *
 import os, time, datetime, math
 
 ######################################
-imagepath = "/data/projects/slitscan/malisca/tile-data/2011-12-16--chunar-banares/128"
-imagepath = "/data/projects/slitscan/malisca/tile-data/2012-03-21--istanbul-straight/128"
-imagepath = "/data/projects/slitscan/malisca/tile-data/2011-04-27--westautobahn-II/128x128"
-imagepath = "/data/projects/slitscan/malisca/tile-data/2011-12-13--varanasi-deshaked/128"
-imagepath = "/data/projects/slitscan/malisca/tile-data/2011-12-13--varanasi/128"
-imagepath = "/data/projects/riverstudies/nile/tiles/2006-12-21-dv--edfu/"
-imagepath = "/data/projects/slitscan/malisca/tile-data/2012-01-08--guwahati-north-deshaked/128"
-imagepath = "/data/projects/slitscan/malisca/tile-data/2013-02-18--amazon-LNK"
-imagepath = "/data/projects/slitscan/malisca/tile-data/2013-02-18--amazon/selection/128/"
+imagepath = "/data/projects/slitscan/malisca/tile-data/2011-12-16--chunar-banares/2592x2592"
+offset = 0
 
+#imagepath = "/data/projects/riverstudies/nile/tiles/2006-12-21-dv--edfu/"
+#offset = 46
+
+#imagepath = "/data/projects/slitscan/malisca/tile-data/2012-03-21--istanbul-straight/128"
+#imagepath = "/data/projects/slitscan/malisca/tile-data/2011-04-27--westautobahn-II/128x128"
+
+imagepath = "/data/projects/slitscan/malisca/tile-data/2011-12-13--varanasi-LNK"
+offset = 26
+
+#imagepath = "/data/projects/slitscan/malisca/tile-data/2011-12-13--varanasi/128"
+#imagepath = "/data/projects/riverstudies/nile/tiles/2006-12-21-dv--edfu/"
+#imagepath = "/data/projects/slitscan/malisca/tile-data/2012-01-08--guwahati-north-deshaked/128"
 #imagepath = "/data/projects/slitscan/malisca/tile-data/2011-12-13--varanasi-east/128"
-#imagepath = "/data/projects/slitscan/malisca/tile-data/2011-06-17--linz-krems/128/"
-page_size = PAPER_A6
-#page_size = (209.9,297.0) #A4
-#page_size = (216.2,303.3) #A4 + Lulu bleed
+
+imagepath = "/data/projects/slitscan/malisca/tile-data/2011-06-17--linz-krems-LNK"
+
+
+page_size = (666,522)
 bleed = 6.3
+page_size = (804,1417) # for EP
 orientation = LANDSCAPE # LANDSCAPE or PORTRAIT
 tiles_per_row = 13
-offset = 0
-margin_fac = 0.2 # 0.25
+margin_fac = 0.25 # 0.25
 linewidth=0.7
-limit = 0
+limit = 10
+
 ###################################
 
 filetype = []
@@ -66,8 +73,7 @@ if not limit > 0:
 	limit = len(D)
 
 if len(D) > 0:
-	#if newDocument(page_size, (bleed,bleed,bleed,bleed), orientation, 1, UNIT_MILLIMETERS, FACINGPAGES, FIRSTPAGERIGHT, 1):
-	if newDocument(page_size, (bleed,bleed,bleed,bleed), orientation, 1, UNIT_POINTS, NOFACINGPAGES, 0, 1):
+	if newDocument(page_size, (bleed,bleed,bleed,bleed), orientation, 1, UNIT_POINTS, FACINGPAGES, FIRSTPAGERIGHT, 1):
 				
 		while imagecount < limit:
 			filename,ext = os.path.splitext(D[imagecount])
@@ -76,12 +82,13 @@ if len(D) > 0:
 				f = createImage(xpos, ypos, tile_w, tile_h)				
 				loadImage(imagepath + "/" + D[imagecount], f)
 				setScaleImageToFrame(scaletoframe=1, proportional=1, name=f)
-				setLineStyle(0,f)
-				imagecount = imagecount + 1				
+				imagecount = imagecount + 1	
+				
+						
 			
-				xpos += tile_w - 0.01
+				xpos += tile_w
 												
-				if xpos >= page_w - 0.2:					
+				if xpos >= page_w - 0.1:					
 					xpos = 0
 					ypos = ypos + tile_h + tile_h *margin_fac
 
@@ -90,7 +97,10 @@ if len(D) > 0:
 					newPage(-1)
 					ypos = margin_h
 					xpos = 0
+					
+					
 
+								
 			progressSet(imagecount)
 			#redrawAll()
 			#setRedraw(1)
