@@ -168,6 +168,7 @@ void usage() {
 	printf("Options:\n");
 	printf(" -o | --output FILE  input FILE \n");
 	printf(" -i | --input FILE   output FILE\n");
+	printf(" -c | --background C background color [0-255]\n");
 	printf(" -h | --help         print this help\n");
 	exit(0);
 }

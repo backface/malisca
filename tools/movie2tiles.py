@@ -349,7 +349,7 @@ if __name__ == '__main__':
 
 						# stretching	
 						if stretch != 1:
-							pi = pi.resize( (pi.size[0], pi.size[1] *stretch), Image.ANTIALIAS)
+							pi = pi.resize( (pi.size[0], int(pi.size[1] *stretch)), Image.ANTIALIAS)
 
 						# apply gamma
 						if gamma != -1:
@@ -358,7 +358,7 @@ if __name__ == '__main__':
 						# rotate image
 						pi = pi.rotate(90)
 						if ratio != 1:
-							pi = pi.resize((pi.size[0] * ratio,pi.size[1] * ratio), Image.ANTIALIAS)
+							pi = pi.resize((int(pi.size[0] * ratio), int(pi.size[1] * ratio)), Image.ANTIALIAS)
 
 						# if jpg swap RGB
 						#if jp4:
