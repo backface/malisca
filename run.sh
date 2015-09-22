@@ -3,22 +3,22 @@
 #a simple startup script, just to show/note some necessary preparations
 
 #stop unwanted services
-sudo service apache2 stop
-sudo service nmbd stop
-sudo service smbd stop
-sudo service bluetooth stop
-sudo service cups stop
-sudo service mysql stop
-sudo service postgresql stop
-sudo service mysql stop
-sudo service tor stop
-sudo service polipo stop
-sudo service portmap stop
-sudo killall mediasrv
+#sudo service apache2 stop
+#sudo service nmbd stop
+#sudo service smbd stop
+#sudo service bluetooth stop
+#sudo service cups stop
+#sudo service mysql stop
+#sudo service postgresql stop
+#sudo service mysql stop
+#sudo service tor stop
+#sudo service polipo stop
+#sudo service portmap stop
+#sudo killall mediasrv
 
-sudo service network-manager stop
-sudo /etc/init.d/networking restart
-sudo ifup eth0
+#sudo service network-manager stop
+#sudo /etc/init.d/networking restart
+#sudo ifup eth0
 
 # necessary due to strange bug in gst_init() with LANG=de_AT.UTF-8
 export LANG=C

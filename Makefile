@@ -1,6 +1,6 @@
 
 CC = gcc
-LINUXCFLAGS= -O3 -lgps -Wall
+LINUXCFLAGS= -O3 -lgps
 LINUXINCLUDE=
 LINUXLDFLAGS=
 OPENCV_FLAGS=$(shell pkg-config opencv --cflags --libs)
@@ -8,7 +8,7 @@ GSTREAMER_FLAGS=$(shell pkg-config --cflags --libs gstreamer-plugins-base-0.10 g
 GL_FLAGS=$(shell pkg-config --cflags --libs gl) -lGLU -lglut
 
 
-SOURCES=$(sort $(filter %.c, $(wildcard *.c */*.c)))
+SOURCES=$(sort $(filter %.c, $(wildcard *.c *.c)))
 TARGETS = $(SOURCES:.c=)
 
 all: $(TARGETS)

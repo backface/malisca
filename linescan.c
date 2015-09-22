@@ -18,6 +18,7 @@
 #include <sys/prctl.h>
 #include <locale.h>
 #include <signal.h>
+#include <errno.h>
 
 #include "highgui.h"
 #include "cv.h"
@@ -77,6 +78,7 @@ struct stat st;
 struct gps_data_t *gpsdata;
 struct gps_fix_t gpsfix;
 
+
 char *gpsd_host;
 char *gpsd_port;
 char gps_status_str[255];
@@ -107,6 +109,7 @@ long framecount = 0;
 long outframecount = 0;
 int done = 0;
 int tilenr, tile_width, tile_height;
+int preview_w = 512, preview_h = 512;
 
 int flag_dropframes = 0;
 int flag_write_movie = 1;
@@ -156,6 +159,8 @@ struct confopt confopt[] = {
 	{ "gps", co_bool, { .pc_int = &flag_gps } },
 	{ "downscale", co_bool, { .pc_int = &flag_downscale } },
 	{ "pre-scanned", co_bool, { .pc_int = &flag_prescanned } },
+	{ "preview-width", co_int, { .pc_int = &preview_w } },
+	{ "preview-height", co_int, { .pc_int = &preview_h } },
 	{ "watch", co_bool, { .pc_int = &flag_watcher_mode } },
 	{ "watch-dir", co_str, { .pc_str = &watch_dir } },
 	{ "watch-src-cmd", co_str, { .pc_str = &watch_src_cmd } },
@@ -289,6 +294,7 @@ void read_options(int argc, char *argv[]) {
 		{"lineheight",	required_argument, 0, 'l'},
 		{"quality",	required_argument, 0, 'q'},
 		{"watch-dir",	required_argument, 0, 'i'},
+		{"preview-size",required_argument, 0, 's'},
 		{"test",	no_argument, 0, 't'},
 		{0, 0, 0, 0}
 	};
@@ -296,7 +302,7 @@ void read_options(int argc, char *argv[]) {
 	while(1) {
 		int option_index = 0;
     
-		c = getopt_long (argc, argv,"o:b:l:ng:p:i:htvc:",long_options, &option_index);
+		c = getopt_long (argc, argv,"o:b:l:ng:p:i:htvc:s:",long_options, &option_index);
 		
 		if (c == -1)
              break;
@@ -334,6 +340,10 @@ void read_options(int argc, char *argv[]) {
 
 			case 'i':
 				watch_dir = optarg;
+				break;
+			case 's':
+				preview_h = atoi(optarg);
+				preview_w = atoi(optarg);
 				break;
 
 			case 't':
@@ -408,6 +418,7 @@ void gps_setup()
 	char logfilename[255];
 	int ret;
 	
+	gpsdata = malloc(sizeof(struct gps_data_t));
 	gpsd_host = "localhost";
 	gpsd_port = "2947";
 	
@@ -480,11 +491,13 @@ void gps_log()
 void gl_init() 
 {
 	// create buffer image
-	if (flag_downscale)
+	if (flag_downscale) {
 		buffer4gl = cvCreateImage(cvSize(512, 512), 8, 3);
-	else {
+		if (frame) printf("%d x %d\n", frame->width, frame->width);
+		else printf("has no frame");
+	} else {
 		buffer4gl = cvCreateImage(cvSize(frame->width, frame->width), 8, 3);
-
+		printf("%d x %d\n", frame->width, frame->width);
 		int i;
 		tilenr = frame->width / frame->height;
 		tile_width = (buffer4gl->width );
@@ -546,7 +559,7 @@ void gl_upload(IplImage *f)
 	}
 	else {				
 		int i;
-		if (flag_downscale) {			
+		if (flag_downscale) {
 			if (!tile_tmp) {
 				tilenr = f->width / f->height;
 				tile_width = (buffer4gl->width );
@@ -574,6 +587,7 @@ void gl_upload(IplImage *f)
 		} else {		
 		
 			GLenum format = IsBGR(f->channelSeq) ? GL_BGR_EXT : GL_RGBA;
+			tilebuffer[0] = cvCloneImage(f);
 		
 			glBindTexture(GL_TEXTURE_2D, texture[0]);
 			glTexSubImage2D(GL_TEXTURE_2D, 0, 
@@ -581,7 +595,7 @@ void gl_upload(IplImage *f)
 				frame->width, frame->height, 
 				format, 
 				GL_UNSIGNED_BYTE, 
-				frame->imageData); 
+				f->imageData); 
 		}	
 		
 	}
@@ -641,8 +655,7 @@ void gl_shiftTiles()
 	pthread_mutex_lock(&frame_mutex);
 	if(frame) {	
 		//shift tiles
-		if (flag_downscale) {
-			
+		if (flag_downscale) {		
 			if (!tile_tmp)
 				tile_tmp = cvCreateImage( cvSize( tile_width, tile_height), 8, 3 );
 		
@@ -661,26 +674,17 @@ void gl_shiftTiles()
 
 			GLenum format = IsBGR(buffer4gl->channelSeq) ? GL_BGR_EXT : GL_RGBA;		
 			glBindTexture(GL_TEXTURE_2D, texture[0]);
-		
-			for(i = tilenr ; i > 0; i--) {
+			
+			for(i = tilenr -1 ; i > 0; i--) {
 				cvReleaseImage(&tilebuffer[i]);
 				tilebuffer[i] = cvCloneImage(tilebuffer[i-1]);
 				glTexSubImage2D(GL_TEXTURE_2D, 0, 
-					0,  (tilenr - i - 2) * tile_height, 
+					0,  (tilenr - i - 1) * tile_height, 
 					tilebuffer[i]->width, tilebuffer[i]->height,  
 					format, 
 					GL_UNSIGNED_BYTE, 
-					tilebuffer[i]->imageData);			
-			}
-
-			cvReleaseImage(&tilebuffer[0]);
-			tilebuffer[0] = cvCloneImage(frame);
-			glTexSubImage2D(GL_TEXTURE_2D, 0, 
-				0,  (tilenr - 2) * tile_height, 
-				tilebuffer[i]->width, tilebuffer[i]->height,  
-				format, 
-				GL_UNSIGNED_BYTE, 
-				frame->imageData);
+					tilebuffer[i]->imageData);	
+			}				
 		}
 	}
 	pthread_mutex_unlock(&frame_mutex);
@@ -751,12 +755,18 @@ void gl_draw()
     // make a quad for the main texture    
     glEnable(GL_TEXTURE_2D);
     glBindTexture(GL_TEXTURE_2D, texture[0]);
+    
+    if (!flag_downscale) {
+		preview_w = frame->width;
+		preview_h = frame->width;
+	}
     glBegin(GL_QUADS);
-        glTexCoord2f(0, 0); glVertex3f(-512, -512  - offset, 0);
-        glTexCoord2f(1, 0); glVertex3f( 512, -512 - offset, 0);
-        glTexCoord2f(1, 1); glVertex3f( 512,  512 - offset, 0);
-        glTexCoord2f(0, 1); glVertex3f(-512,  512  - offset, 0);
+        glTexCoord2f(0, 0); glVertex3f(-preview_h, -preview_w  - offset, 0);
+        glTexCoord2f(1, 0); glVertex3f( preview_h, -preview_w - offset, 0);
+        glTexCoord2f(1, 1); glVertex3f( preview_h,  preview_w - offset, 0);
+        glTexCoord2f(0, 1); glVertex3f(-preview_h,  preview_w  - offset, 0);
     glEnd();
+    
     glDisable(GL_TEXTURE_2D);
 
 	// draw zoom in current tile
@@ -765,17 +775,17 @@ void gl_draw()
 		glEnable(GL_TEXTURE_2D);
 		glBindTexture(GL_TEXTURE_2D, texture[1]);
 		glBegin(GL_QUADS);
-			glTexCoord2f(0, 0); glVertex3f(-512, 512 -buf_height , 0.);
-			glTexCoord2f(1, 0); glVertex3f( 512, 512 -buf_height , 0.);
-			glTexCoord2f(1, 1); glVertex3f( 512, 512, 0.);
-			glTexCoord2f(0, 1); glVertex3f(-512, 512, 0.);
+			glTexCoord2f(0, 0); glVertex3f(-preview_h, preview_w -buf_height , 0.);
+			glTexCoord2f(1, 0); glVertex3f( preview_h, preview_w -buf_height , 0.);
+			glTexCoord2f(1, 1); glVertex3f( preview_h, preview_w, 0.);
+			glTexCoord2f(0, 1); glVertex3f(-preview_h, preview_w, 0.);
 		glEnd();
 		glDisable(GL_TEXTURE_2D);
 
 		glColor4f(1.0f, 1.0f, 1.0f, 0.5f);
 		glBegin(GL_LINES);		
-			glVertex3f(-512, 512 -buf_height , 0.);
-			glVertex3f( 512, 512 -buf_height , 0.);
+			glVertex3f(-preview_h, preview_w -buf_height , 0.);
+			glVertex3f( preview_h, preview_w -buf_height , 0.);
 		glEnd();
 	}
 
@@ -785,11 +795,11 @@ void gl_draw()
 	// draw surrounding lines
 	glColor4f(1.0f, 1.0f, 1.0f, 0.5f);
     glBegin(GL_LINES);
-		glVertex3f(-512,-512 , 0.);
-		glVertex3f(-512, 512 , 0.);
+		glVertex3f(-preview_h,-preview_w , 0.);
+		glVertex3f(-preview_w, preview_w , 0.);
 		
-		glVertex3f( 512, -512, 0.);
-		glVertex3f( 512, 512, 0.);
+		glVertex3f( preview_w, -preview_w, 0.);
+		glVertex3f( preview_w, preview_w, 0.);
     glEnd();
 
 
@@ -799,28 +809,27 @@ void gl_draw()
 	glColor4f(1.0f, 1.0f, 1.0f, 1.0f);		
 	if (draw_line > 0) { 
 		glBegin(GL_LINES);
-			glVertex3f(-512, 0.0, 0.0);
-			glVertex3f( 512, 0.0, 0.0);
+			glVertex3f(-preview_h, 0.0, 0.0);
+			glVertex3f( preview_h, 0.0, 0.0);
 		glEnd();
 	}
-
 	// draw zoom in current tile
 	if(draw_grey)
 	{
 		glColor4f(.5f, .5f, .5f, 1.0f);
 		glBegin(GL_QUADS);
-			glTexCoord2f(0, 0); glVertex3f(0. , -512 , 0.);
-			glTexCoord2f(1, 0); glVertex3f(0. +buf_height, -512 , 0.);
-			glTexCoord2f(1, 1); glVertex3f(0. +buf_height, 512, 0.);
-			glTexCoord2f(0, 1); glVertex3f(0. , 512, 0.);
+			glTexCoord2f(0, 0); glVertex3f(0. , -preview_h , 0.);
+			glTexCoord2f(1, 0); glVertex3f(0. +buf_height, -preview_w , 0.);
+			glTexCoord2f(1, 1); glVertex3f(0. +buf_height, preview_w, 0.);
+			glTexCoord2f(0, 1); glVertex3f(0. , preview_h, 0.);
 		glEnd();
 		glDisable(GL_TEXTURE_2D);
 	}	
 
 	// write text info
-	gl_write(-508, -520, str_info);
-    gl_write(-508,  532, str_gps);
-    gl_write(-508,  510, utc);
+	gl_write(-preview_h + 4, -preview_w - 8, str_info);
+    gl_write(-preview_h + 4,  preview_w + 20, str_gps);
+    //gl_write(-508,  510, utc);
     
     glutSwapBuffers();
 
@@ -876,7 +885,15 @@ void *gl_view_thread_func(void *arg) {
 	glutInit(&argc,&argv);
 	glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
 	glutInitWindowPosition(0,0);
-	glutInitWindowSize(516,545);
+	if (flag_downscale) {
+		glutInitWindowSize(preview_w + 4, preview_h + 33);
+	} else {
+		while (!frame) {
+			sleep(1);
+			printf("display waiting for frame...\n");
+		}	
+		glutInitWindowSize(frame->width +4, frame->width + 33);
+	}
 	
 	if (glutCreateWindow("linescan") == GL_FALSE) exit(1);
 
@@ -1107,6 +1124,8 @@ static void process_buffer (GstElement *sink) {
 
 		if (!buffer)
 			printf("NO BUFFER\n");
+			
+		
 			
 		GstCaps *buff_caps = 
 			gst_buffer_get_caps(buffer);
@@ -1350,9 +1369,6 @@ static void process_buffer (GstElement *sink) {
 		printf("\r-> %s",str_info);
 			
 		if (flag_gps) {
-
-			
-					
 			if (gpsfix.mode >= MODE_2D) {
 				unix_to_iso8601(gpsfix.time, utc, sizeof(utc));
 				sprintf(str_gps,
@@ -1679,7 +1695,7 @@ gint main (gint argc, gchar *argv[]) {
 				gst_object_unref(pipeline);
 				exit(0);
 		}
-		printf("GStreamer: pipline paused.\n");
+		printf("GStreamer: pipline paus	ed.\n");
 
 		if(gst_element_set_state(GST_ELEMENT(pipeline), 
 			GST_STATE_PLAYING) ==  GST_STATE_CHANGE_FAILURE) {
@@ -1694,9 +1710,11 @@ gint main (gint argc, gchar *argv[]) {
 		calibration_loadimages();		
 	}	
   
-  int result;
+	int result;
 	// init viewer thread
+	
 	if (flag_display) {		
+
 		result = pthread_mutex_init(&frame_mutex, NULL);
 		if (result != 0) {
 			perror("Mutex initialisation failed");
