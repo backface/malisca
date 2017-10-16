@@ -1,5 +1,6 @@
 malisca
 a linescanner application..
+amongst other used for http://play.riverstudies.net/
 
 requires:
 * gstreamer 0.10
